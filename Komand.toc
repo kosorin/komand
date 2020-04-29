@@ -1,0 +1,10 @@
+## Interface: 11304
+## Version: 1.13.04.1
+
+## Title: Komand
+## Notes: Komand addon
+## Author: Posix
+
+## SavedVariables: KomandDB
+
+Komand.lua
