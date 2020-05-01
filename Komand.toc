@@ -1,5 +1,5 @@
 ## Interface: 11304
-## Version: 1.13.04.1
+## Version: 1.13.04.2
 
 ## Title: Komand
 ## Notes: Komand addon
@@ -17,4 +17,8 @@ Libs\AceConsole-3.0\AceConsole-3.0.xml
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 
-Komand.lua
+Utils.lua
+Menu.lua
+Options.lua
+Database.lua
+Addon.lua
