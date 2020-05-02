@@ -14,7 +14,7 @@ function AceConfigDialog:Break(order)
 end
 function AceConfigDialog:Header(name, order)
     return {
-        name = "\n|cffffcc00" .. name,
+        name = "\n\n|cffffcc00" .. name,
         order = order,
         width = "full",
         type = "description",
@@ -241,8 +241,7 @@ function Options:CreateItem(item, order)
                             self:OnRemoveItem(item.id)
                         end,
                     },
-                    br20 = AceConfigDialog:Break(20),
-                    settings = AceConfigDialog:Header("Settings", 21),
+                    settings = AceConfigDialog:Header("Settings", 20),
                     pinned = {
                         name = "Pinned",
                         order = 25,
