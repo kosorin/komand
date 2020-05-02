@@ -24,7 +24,7 @@ end
 local Options = {}
 Core.Options = Options
 
-function Options:OnShow()
+function Options:Open()
     AceConfigDialog:Open(KOMAND)
     AceConfigDialog:SelectGroup(KOMAND, "menu")
 end
@@ -80,7 +80,7 @@ function Options:CreateRoot()
         guiHidden = true,
         type = "execute",
         func = function(info)
-            self:OnShow()
+            self:Open()
         end
     }
 
