@@ -189,6 +189,25 @@ function Options:CreateGroup(group, order)
     }
 end
 
+local function getItemValue(info, value)
+    local itemId = info[#info - 2]
+    if info.type == "color" then
+        local color = Core.db.profile.items[itemId][info[#info]]
+        return unpack(color ~= nil and color or {})
+    else
+        return Core.db.profile.items[itemId][info[#info]]
+    end
+end
+
+local function setItemValue(info, value, ...)
+    local itemId = info[#info - 2]
+    if info.type == "color" then
+        Core.db.profile.items[itemId][info[#info]] = {value, ...}
+    else
+        Core.db.profile.items[itemId][info[#info]] = value
+    end
+end
+
 function Options:CreateItem(item, order)
     return {
         name = item.name,
@@ -208,8 +227,8 @@ function Options:CreateItem(item, order)
                         order = 10,
                         width = "normal",
                         type = "input",
-                        get = function(info) return item.name end,
-                        set = function(info, value) item.name = value end,
+                        get = getItemValue,
+                        set = setItemValue,
                     },
                     delete = {
                         name = "Delete Item",
@@ -228,16 +247,16 @@ function Options:CreateItem(item, order)
                         name = "Pinned",
                         order = 25,
                         type = "toggle",
-                        get = function(info) return item.pinned end,
-                        set = function(info, value) item.pinned = value end,
+                        get = getItemValue,
+                        set = setItemValue,
                     },
                     color = {
                         name = "Color",
                         order = 26,
                         type = "color",
                         hasAlpha = false,
-                        get = function(info) return unpack(item.color ~= nil and item.color or {}) end,
-                        set = function(info, ...) item.color = {...} end,
+                        get = getItemValue,
+                        set = setItemValue,
                     },
                     br100 = AceConfigDialog:Break(100),
                     command = {
@@ -245,8 +264,8 @@ function Options:CreateItem(item, order)
                         order = 101,
                         width = 1.5,
                         type = "input",
-                        get = function(info) return item.command end,
-                        set = function(info, value) item.command = value end,
+                        get = getItemValue,
+                        set = setItemValue,
                     },
                     execute = {
                         name = "Execute",
