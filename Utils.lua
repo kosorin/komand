@@ -1,9 +1,9 @@
 local KOMAND, Core = ...
 
-local Utils = {}
+local Utils = {
+    idPrefix = "ID-",
+}
 Core.Utils = Utils
-
-Core.Utils.idPrefix = "ID-"
 
 function Utils.GenerateId(items)
     local random = math.random
@@ -31,9 +31,9 @@ function Utils.Sort(items, comparer)
     return result
 end
 
-function Utils.Find(items, filter)
+function Utils.Find(items, predicate)
     for key, item in pairs(items or {}) do
-        if filter(key, item) then
+        if predicate(key, item) then
             return item
         end
     end
