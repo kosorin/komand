@@ -352,10 +352,13 @@ function Options:Update()
 end
 
 function Options:Build()
+    Core.Database:FireDataChanged()
+    
     if self.root == nil then
         self:CreateRoot()
     end
     self:Update()
+
     return self.root
 end
 

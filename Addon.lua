@@ -17,9 +17,6 @@ end
 function Addon:OnDisable()
 end
 
-function Addon:OnProfileChanged()
-end
-
 function Core.Execute(command)
     local editBox = DEFAULT_CHAT_FRAME.editBox
     editBox:SetText(command)

@@ -28,9 +28,7 @@ function Database:Initialize()
             },
         },
     }, true)
-    Core.db.RegisterCallback(Core.Addon, "OnProfileChanged", "OnProfileChanged")
-    Core.db.RegisterCallback(Core.Addon, "OnProfileCopied", "OnProfileChanged")
-    Core.db.RegisterCallback(Core.Addon, "OnProfileReset", "OnProfileChanged")
+    Core.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
 end
 
 function Database:AddGroup()
@@ -59,4 +57,41 @@ end
 
 function Database:RemoveItem(id)
     Core.db.profile.items[id] = nil
+end
+
+function Database:FireDataChanged(...)
+	Core.db.callbacks:Fire("DataChanged", ...)
+end
+
+local function generateMenu()
+    local root = {
+        text = "Menu",
+        children = {},
+        item = nil,
+    }
+
+    local nodes = Core.Utils.Select(Core.db.profile.items, function(_, item) return {
+        text = item.name,
+        children = {},
+        item = item,
+    } end)
+    nodes = Core.Utils.Sort(nodes, function(a, b)
+        return Core.ItemComparer(a.item, b.item)
+    end)
+
+    local knodes = {}
+    for _, node in pairs(nodes) do
+        knodes[node.item.id] = node
+    end
+
+    for _, node in pairs(nodes) do
+        local parent = node.item.parentId and knodes[node.item.parentId] or root
+        table.insert(parent.children, node)
+    end
+
+    return root
+end
+
+function Database:OnDataChanged()
+    self.menu = generateMenu()
 end
