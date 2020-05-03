@@ -5,6 +5,8 @@ function Core.Execute(command)
     local editBox = DEFAULT_CHAT_FRAME.editBox
     editBox:SetText(command)
     ChatEdit_SendText(editBox)
+
+    Core.Menu:Hide()
 end
 
 function Core.GroupComparer(a, b)
