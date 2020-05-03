@@ -22,3 +22,4 @@ Menu.lua
 Options.lua
 Database.lua
 Addon.lua
+Core.lua
