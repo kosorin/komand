@@ -93,5 +93,6 @@ local function generateMenu()
 end
 
 function Database:OnDataChanged()
+    Core.Menu:Hide()
     self.menu = generateMenu()
 end

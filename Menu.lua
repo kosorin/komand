@@ -70,3 +70,9 @@ function Menu:Show(groupName)
         EasyMenu(menu, self.frame, "cursor", 0, 0, "MENU");
     end
 end
+
+function Menu:Hide()
+    if UIDROPDOWNMENU_OPEN_MENU == self.frame then
+        CloseDropDownMenus()
+    end
+end
