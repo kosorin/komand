@@ -2,11 +2,11 @@ local KOMAND, Core = ...
 _G.Komand = Core
 
 function Core.Execute(command)
+    Core.Menu:Hide()
+
     local editBox = DEFAULT_CHAT_FRAME.editBox
     editBox:SetText(command)
     ChatEdit_SendText(editBox)
-
-    Core.Menu:Hide()
 end
 
 function Core.GroupComparer(a, b)
