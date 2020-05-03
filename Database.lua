@@ -7,7 +7,7 @@ local Database = {}
 Core.Database = Database
 
 function Database:Initialize()
-    Core.db = AceDB:New(KOMAND .. "DB", {
+    self.db = AceDB:New(KOMAND .. "DB", {
         profile = {
             groups = {
                 ["**"] = {
@@ -28,39 +28,39 @@ function Database:Initialize()
             },
         },
     }, true)
-    Core.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
+    self.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
 end
 
 function Database:AddGroup()
-    local id = Core.Utils.GenerateId(Core.db.profile.groups)
-    local group = Core.db.profile.groups[id]
+    local id = Core.Utils.GenerateId(self.db.profile.groups)
+    local group = self.db.profile.groups[id]
     group.id = id
     return group
 end
 
 function Database:RemoveGroup(id)
-    for _, item in pairs(Core.db.profile.items) do
+    for _, item in pairs(self.db.profile.items) do
         if (item.groupId == id) then
-            Core.db.profile.items[item.id] = nil
+            self.db.profile.items[item.id] = nil
         end
     end
-    Core.db.profile.groups[id] = nil
+    self.db.profile.groups[id] = nil
 end
 
 function Database:AddItem(groupId)
-    local id = Core.Utils.GenerateId(Core.db.profile.items)
-    local item = Core.db.profile.items[id]
+    local id = Core.Utils.GenerateId(self.db.profile.items)
+    local item = self.db.profile.items[id]
     item.id = id
     item.groupId = groupId
     return item
 end
 
 function Database:RemoveItem(id)
-    Core.db.profile.items[id] = nil
+    self.db.profile.items[id] = nil
 end
 
 function Database:FireDataChanged(...)
-	Core.db.callbacks:Fire("DataChanged", ...)
+	self.db.callbacks:Fire("DataChanged", ...)
 end
 
 local function generateMenu()
@@ -70,7 +70,7 @@ local function generateMenu()
         item = nil,
     }
 
-    local nodes = Core.Utils.Select(Core.db.profile.items, function(_, item) return {
+    local nodes = Core.Utils.Select(Database.db.profile.items, function(_, item) return {
         text = item.name,
         children = {},
         item = item,

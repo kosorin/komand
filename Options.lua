@@ -48,13 +48,13 @@ function Options:OnAddItem(groupId)
 end
 
 function Options:OnRemoveItem(itemId)
-    local item = Core.db.profile.items[itemId]
+    local item = Core.Database.db.profile.items[itemId]
     Core.Database:RemoveItem(itemId)
     AceConfigDialog:SelectGroup(KOMAND, "menu", item.groupId)
 end
 
 function Options:OnExecuteItem(itemId)
-    local item = Core.db.profile.items[itemId]
+    local item = Core.Database.db.profile.items[itemId]
     Core.Execute(item.command)
 end
 
@@ -132,7 +132,7 @@ function Options:CreateMenu(order)
 end
 
 function Options:CreateProfiles(order)
-    local node =  AceDBOptions:GetOptionsTable(Core.db, true)
+    local node =  AceDBOptions:GetOptionsTable(Core.Database.db, true)
     node.order = order
     return node
 end
@@ -195,19 +195,19 @@ end
 local function getItemValue(info)
     local itemId = info[#info - 2]
     if info.type == "color" then
-        local color = Core.db.profile.items[itemId][info[#info]]
+        local color = Core.Database.db.profile.items[itemId][info[#info]]
         return unpack(color ~= nil and color or {})
     else
-        return Core.db.profile.items[itemId][info[#info]]
+        return Core.Database.db.profile.items[itemId][info[#info]]
     end
 end
 
 local function setItemValue(info, value, ...)
     local itemId = info[#info - 2]
     if info.type == "color" then
-        Core.db.profile.items[itemId][info[#info]] = {value, ...}
+        Core.Database.db.profile.items[itemId][info[#info]] = {value, ...}
     else
-        Core.db.profile.items[itemId][info[#info]] = value
+        Core.Database.db.profile.items[itemId][info[#info]] = value
     end
 end
 
@@ -316,7 +316,7 @@ function Options:ClearMenu()
 end
 
 function Options:UpdateParentData()
-    local selectItems = Core.db.profile.items
+    local selectItems = Core.Database.db.profile.items
     selectItems = Core.Utils.Sort(selectItems, Core.ItemNameComparer)
     selectItems = Core.Utils.Select(selectItems, function(_, item) return {
         key = item.id,
@@ -343,10 +343,10 @@ end
 function Options:Update()
     self:UpdateParentData()
     self:ClearMenu()
-    for order, group in pairs(Core.Utils.Sort(Core.db.profile.groups, Core.GroupComparer)) do
+    for order, group in pairs(Core.Utils.Sort(Core.Database.db.profile.groups, Core.GroupComparer)) do
         self.root.args.menu.args[group.id] = self:CreateGroup(group, order)
     end
-    for order, item in pairs(Core.Utils.Sort(Core.db.profile.items, Core.ItemComparer)) do
+    for order, item in pairs(Core.Utils.Sort(Core.Database.db.profile.items, Core.ItemComparer)) do
         self.root.args.menu.args[item.groupId].args[item.id] = self:CreateItem(item, order)
     end
 end

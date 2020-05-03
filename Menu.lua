@@ -14,7 +14,7 @@ function Menu:BuildMenu(group, isRoot)
         })
     end
 
-    local items = Core.db.profile.items or {}
+    local items = Core.Database.db.profile.items or {}
     items = Core.Utils.Where(items, function(_, item)
         return item.groupId == group.id
     end)
@@ -41,7 +41,7 @@ end
 function Menu:Show(groupName)
     local menu
 
-    local group = Core.Utils.FindByName(Core.db.profile.groups, groupName)
+    local group = Core.Utils.FindByName(Core.Database.db.profile.groups, groupName)
     if group then
         menu = self:BuildMenu(group, true)
     else
@@ -52,7 +52,7 @@ function Menu:Show(groupName)
                 isTitle = true,
             },
         }
-        for _, group in pairs(Core.Utils.Sort(Core.db.profile.groups, Core.GroupComparer)) do
+        for _, group in pairs(Core.Utils.Sort(Core.Database.db.profile.groups, Core.GroupComparer)) do
             local subMenu = {
                 text = group.name,
                 notCheckable = true,
