@@ -88,3 +88,12 @@ function Utils.ToList(items)
     end
     return result
 end
+
+---@param color table RGB[A] (range 0..1)
+function Utils.ToColorCode(color)
+    local max = 255
+    local values = Core.Utils.Select(color, function(_, x)
+        return x * max
+    end)
+    return ("|c%02x%02x%02x%02x"):format(values[4] or max, unpack(values, 1, 3))
+end
