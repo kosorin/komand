@@ -18,6 +18,7 @@ function Database:Initialize()
             items = {
                 ["**"] = {
                     id = nil,
+                    parentId = nil,
                     groupId = nil,
                     name = "*New Item",
                     color = {1, 1, 1, 1},

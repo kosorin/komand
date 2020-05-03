@@ -55,3 +55,15 @@ function Core.ItemComparer(a, b)
 
     return aa < bb
 end
+
+function Core.ItemNameComparer(a, b)
+    local aa, bb
+
+    aa = a.name:upper()
+    bb = b.name:upper()
+    if aa ~= bb then
+        return aa < bb
+    end
+
+    return aa < bb
+end

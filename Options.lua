@@ -24,6 +24,9 @@ end
 local Options = {}
 Core.Options = Options
 
+local NIL_PARENT_ITEM_ID = ""
+local NIL_PARENT_SELECT_ID = 1
+
 function Options:Open()
     AceConfigDialog:Open(KOMAND)
     AceConfigDialog:SelectGroup(KOMAND, "menu")
@@ -189,7 +192,7 @@ function Options:CreateGroup(group, order)
     }
 end
 
-local function getItemValue(info, value)
+local function getItemValue(info)
     local itemId = info[#info - 2]
     if info.type == "color" then
         local color = Core.db.profile.items[itemId][info[#info]]
@@ -206,6 +209,16 @@ local function setItemValue(info, value, ...)
     else
         Core.db.profile.items[itemId][info[#info]] = value
     end
+end
+
+local function getItemValueParent(info)
+    local itemId = getItemValue(info) or NIL_PARENT_ITEM_ID
+    return Options.parentData.fromDatabase[itemId] or NIL_PARENT_SELECT_ID
+end
+
+local function setItemValueParent(info, value, ...)
+    local parentId = Options.parentData.toDatabase[value]
+    setItemValue(info, parentId ~= NIL_PARENT_ITEM_ID and parentId or nil)
 end
 
 function Options:CreateItem(item, order)
@@ -257,6 +270,17 @@ function Options:CreateItem(item, order)
                         get = getItemValue,
                         set = setItemValue,
                     },
+                    br50 = AceConfigDialog:Break(50),
+                    parentId = {
+                        name = "Parent",
+                        order = 52,
+                        width = "double",
+                        type = "select",
+                        style = "dropdown",
+                        values = self.parentData.values,
+                        get = getItemValueParent,
+                        set = setItemValueParent,
+                    },
                     br100 = AceConfigDialog:Break(100),
                     command = {
                         name = "Command",
@@ -291,7 +315,33 @@ function Options:ClearMenu()
     end
 end
 
+function Options:UpdateParentData()
+    local selectItems = Core.db.profile.items
+    selectItems = Core.Utils.Sort(selectItems, Core.ItemNameComparer)
+    selectItems = Core.Utils.Select(selectItems, function(_, item) return {
+        key = item.id,
+        value = item.name,
+    } end)
+    table.insert(selectItems, 1, {
+        key = NIL_PARENT_ITEM_ID,
+        value = "|cff909090<No Parent>",
+    })
+
+    self.parentData = {
+        values = {},
+        fromDatabase = {},
+        toDatabase = {},
+    }
+
+    for i, selectItem in pairs(selectItems) do
+        self.parentData.values[i] = selectItem.value
+        self.parentData.fromDatabase[selectItem.key] = i
+        self.parentData.toDatabase[i] = selectItem.key
+    end
+end
+
 function Options:Update()
+    self:UpdateParentData()
     self:ClearMenu()
     for order, group in pairs(Core.Utils.Sort(Core.db.profile.groups, Core.GroupComparer)) do
         self.root.args.menu.args[group.id] = self:CreateGroup(group, order)
