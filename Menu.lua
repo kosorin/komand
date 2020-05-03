@@ -3,31 +3,29 @@ local KOMAND, Core = ...
 local Menu = {}
 Core.Menu = Menu
 
-local function executeCommand(_, command)
-    Core.Execute(command)
+local function executeCommand(_, commandValue)
+    Core.Execute(commandValue)
 end
 
-local function createMenuButton(node, isTitle)
+local function createMenuButton(node, isMain)
     local info = {}
     
-    info.isTitle = isTitle
+    local command = node.command
+
     info.notCheckable = true
-    info.text = node.text
-    info.hasArrow = not isTitle and getn(node.children) > 0
+    info.isTitle = false
+    info.hasArrow = not isMain and getn(node.children) > 0
+
+    info.value = command.id
+    info.text = command.name
     
-    local item = node.item
-    if item then
-        info.value = item.id
-        
-        info.isTitle = false
-        info.colorCode = Core.Utils.ToColorCode(item.color)
+    info.colorCode = Core.Utils.ToColorCode(command.color)
 
-        info.tooltipTitle = item.name
-        info.tooltipText = item.command
+    info.tooltipTitle = command.name
+    info.tooltipText = command.value
 
-        info.func = executeCommand
-        info.arg1 = item.command
-    end
+    info.func = executeCommand
+    info.arg1 = command.value
 
     return info
 end
@@ -40,35 +38,32 @@ local function createMenuFrame()
             return
         end
 
-        local parentNode = UIDROPDOWNMENU_MENU_VALUE
-            and Core.Database.menu.nodes[UIDROPDOWNMENU_MENU_VALUE]
-            or Core.Database.menu.root
-        if not parentNode then
+        local node = UIDROPDOWNMENU_MENU_VALUE
+            and Core.Database.commandTree.nodes[UIDROPDOWNMENU_MENU_VALUE]
+            or Core.Database.commandTree.rootNode
+        if not node then
             return
         end
 
-        -- Title
         if level == 1 then
-            UIDropDownMenu_AddButton(createMenuButton(parentNode, true), level)
+            UIDropDownMenu_AddButton(createMenuButton(node, true), level)
         end
 
-        -- Items
-        for _, node in pairs(parentNode.children) do
-            UIDropDownMenu_AddButton(createMenuButton(node, false), level)
+        for _, childNode in pairs(node.children) do
+            UIDropDownMenu_AddButton(createMenuButton(childNode, false), level)
         end
     end
     return frame
 end
 
-function Menu:Show(itemName)
+function Menu:Show(commandName)
+    local command = Core.Utils.FindByName(Core.Database.db.profile.commands, commandName)
+    local commandId = command and command.id or nil
+    
     if not self.frame then
         self.frame = createMenuFrame()
     end
-
-    local item = Core.Utils.FindByName(Core.Database.db.profile.items, itemName)
-    local itemId = item and item.id or nil
-
-    ToggleDropDownMenu(1, itemId, self.frame, "cursor", 0, 0)
+    ToggleDropDownMenu(1, commandId, self.frame, "cursor", 0, 0)
 end
 
 function Menu:Hide()

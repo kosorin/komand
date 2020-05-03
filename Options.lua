@@ -12,6 +12,7 @@ function AceConfigDialog:Break(order)
         type = "description",
     }
 end
+
 function AceConfigDialog:Header(name, order)
     return {
         name = "\n\n|cffffcc00" .. name,
@@ -24,51 +25,45 @@ end
 local Options = {}
 Core.Options = Options
 
-local NIL_PARENT_ITEM_ID = ""
-local NIL_PARENT_SELECT_ID = 1
+local function selectCommandNode(commandId)
+    local node = commandId and Core.Database.commandTree.nodes[commandId] or Core.Database.commandTree.rootNode
+    AceConfigDialog:SelectGroup(KOMAND, unpack(node.path))
+end
 
 function Options:Open()
     AceConfigDialog:Open(KOMAND)
-    AceConfigDialog:SelectGroup(KOMAND, "menu")
+    selectCommandNode(Core.Database.rootCommandId)
 end
 
-function Options:OnAddGroup()
-    local group = Core.Database:AddGroup()
-    AceConfigDialog:SelectGroup(KOMAND, "menu", group.id)
+function Options:Close()
+    AceConfigDialog:Close(KOMAND)
 end
 
-function Options:OnRemoveGroup(groupId)
-    Core.Database:RemoveGroup(groupId)
-    AceConfigDialog:SelectGroup(KOMAND, "menu")
+function Options:OnAddItem(node)
+    local command = Core.Database:AddCommand(node.command.id)
+    selectCommandNode(command.id)
 end
 
-function Options:OnAddItem(groupId)
-    local item = Core.Database:AddItem(groupId)
-    AceConfigDialog:SelectGroup(KOMAND, "menu", groupId, item.id)
+function Options:OnRemoveItem(node)
+    Core.Database:RemoveCommand(node.command.id)
+    selectCommandNode(node.command.parentId)
 end
 
-function Options:OnRemoveItem(itemId)
-    local item = Core.Database.db.profile.items[itemId]
-    Core.Database:RemoveItem(itemId)
-    AceConfigDialog:SelectGroup(KOMAND, "menu", item.groupId)
-end
-
-function Options:OnExecuteItem(itemId)
-    local item = Core.Database.db.profile.items[itemId]
-    Core.Execute(item.command)
+function Options:OnExecuteItem(commandId)
+    local command = Core.Database.db.profile.commands[commandId]
+    Core.Execute(command.value)
 end
 
 
-function Options:CreateRoot()
-
-    self.root = {
+function Options:BuildOptions()
+    self.options = {
         type = "group",
         childGroups = "tree",
         args = {},
     }
 
     -- Command line
-    self.root.args.show = {
+    self.options.args.show = {
         name = "Show",
         order = 0,
         guiHidden = true,
@@ -77,7 +72,7 @@ function Options:CreateRoot()
             Core.Menu:Show(value)
         end
     }
-    self.root.args.options = {
+    self.options.args.options = {
         name = "Options",
         order = 1,
         guiHidden = true,
@@ -88,64 +83,107 @@ function Options:CreateRoot()
     }
 
     -- GUI
-    self.root.args.general = self:CreateGeneral(100)
-    self.root.args.menu = self:CreateMenu(101)
-    self.root.args.profiles = self:CreateProfiles(101)
+    self.options.args.general = self:BuildGeneralOptions(100)
+    self.options.args.profiles = self:BuildProfilesOptions(200)
 end
 
-function Options:CreateGeneral(order)
+function Options:BuildGeneralOptions(order)
     return {
         name = "General",
         order = order,
         cmdHidden = true,
         type = "group",
-        args = {}
+        args = {},
     }
 end
 
-function Options:CreateMenu(order)
-    return {
-        name = "Menu",
-        order = order,
-        cmdHidden = true,
-        type = "group",
-        args = {
-            groups = {
-                name = "Groups",
-                order = 10,
-                type = "group",
-                inline = true,
-                args = {
-                    new = {
-                        name = "Create Group",
-                        order = 0,
-                        width = "double",
-                        type = "execute",
-                        func = function(info)
-                            self:OnAddGroup()
-                        end,
-                    },
-                },
-            },
-        }
-    }
-end
-
-function Options:CreateProfiles(order)
+function Options:BuildProfilesOptions(order)
     local node =  AceDBOptions:GetOptionsTable(Core.Database.db, true)
     node.order = order
     return node
 end
 
-function Options:CreateGroup(group, order)
-    return {
-        name = group.name,
+local function argDisabled_command_rootCommand(info)
+    local commandId = info[#info - 2]
+    return commandId == Core.Database.rootCommandId
+end
+
+local function argGet_command(info)
+    local commandId = info[#info - 2]
+    local property = info[#info]
+    if info.type == "color" then
+        local color = Core.Database.db.profile.commands[commandId][property]
+        return unpack(color ~= nil and color or {})
+    else
+        return Core.Database.db.profile.commands[commandId][property]
+    end
+end
+
+local function argSet_command(info, value, ...)
+    local commandId = info[#info - 2]
+    local property = info[#info]
+    if info.type == "color" then
+        Core.Database.db.profile.commands[commandId][property] = {value, ...}
+    else
+        Core.Database.db.profile.commands[commandId][property] = value
+    end
+    Core.Database:FireDataChanged("SetProperty", property)
+end
+
+local function argGet_command_parentId(info)
+    return argGet_command(info)
+end
+
+local function argSet_command_parentId(info, value, ...)
+    local commandId = info[#info - 2]
+    argSet_command(info, value, ...)
+    selectCommandNode(commandId)
+end
+
+local function traverseComandTree_parentId(node, excludeCommandId, func)
+    if node.command.id == excludeCommandId then
+        return
+    end
+    func(node)
+    for _, childNode in pairs(node.children) do
+        traverseComandTree_parentId(childNode, excludeCommandId, func)
+    end
+end
+
+local function argValues_command_parentId(info)
+    local commandId = info[#info - 2]
+
+    local values = {}
+    traverseComandTree_parentId(Core.Database.commandTree.rootNode, commandId, function(node)
+        values[node.command.id] = ("   "):rep(#node.path - 1) .. node.command.name
+    end)
+
+    return values
+end
+
+local function argSorting_command_parentId(info)
+    local commandId = info[#info - 2]
+    
+    local sorting = {}
+    traverseComandTree_parentId(Core.Database.commandTree.rootNode, commandId, function(node)
+        table.insert(sorting, node.command.id)
+    end)
+
+    return sorting
+end
+
+function Options:BuildCommand(node, order)
+    local command = node.command
+
+    local arg = {
+        name = command.name,
         order = order,
+        cmdHidden = true,
         type = "group",
         childGroups = "tree",
         args = {
-            group = {
-                name = "Group",
+            command = {
+                name = "Command",
                 order = 10,
                 type = "group",
                 inline = true,
@@ -155,211 +193,112 @@ function Options:CreateGroup(group, order)
                         order = 10,
                         width = "normal",
                         type = "input",
-                        get = function(info) return group.name end,
-                        set = function(info, value) group.name = value end,
+                        get = argGet_command,
+                        set = argSet_command,
                     },
-                    delete = {
-                        name = "Delete Group",
+                    remove = {
+                        disabled = argDisabled_command_rootCommand,
+                        name = "Remove Command",
                         order = 11,
                         width = "normal",
-                        type= "execute",
+                        type = "execute",
                         confirm = true,
-                        confirmText = ("Delete '%s' group?"):format(group.name),
+                        confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children."):format(command.name),
                         func = function(info)
-                            self:OnRemoveGroup(group.id)
+                            self:OnRemoveItem(node)
                         end,
                     },
+                    settings = AceConfigDialog:Header("Settings", 20),
+                    pinned = {
+                        disabled = argDisabled_command_rootCommand,
+                        name = "Pinned",
+                        order = 25,
+                        width = 0.75,
+                        type = "toggle",
+                        get = argGet_command,
+                        set = argSet_command,
+                    },
+                    color = {
+                        name = "Color",
+                        order = 26,
+                        width = 0.75,
+                        type = "color",
+                        hasAlpha = false,
+                        get = argGet_command,
+                        set = argSet_command,
+                    },
+                    br50 = AceConfigDialog:Break(50),
+                    parentId = {
+                        disabled = argDisabled_command_rootCommand,
+                        name = "Parent",
+                        order = 52,
+                        width = "double",
+                        type = "select",
+                        style = "dropdown",
+                        values = argValues_command_parentId,
+                        sorting = argSorting_command_parentId,
+                        get = argGet_command_parentId,
+                        set = argSet_command_parentId,
+                    },
+                    br100 = AceConfigDialog:Break(100),
+                    value = {
+                        name = "Command",
+                        order = 101,
+                        width = 1.5,
+                        type = "input",
+                        get = argGet_command,
+                        set = argSet_command,
+                    },
+                    execute = {
+                        name = "Execute",
+                        order = 102,
+                        width = 0.5,
+                        type = "execute",
+                        func = function(info)
+                            self:OnExecuteItem(command.id)
+                        end,
+                    },
+                    br1000 = AceConfigDialog:Break(1000),
                 },
             },
-            items = {
-                name = "Items",
+            children = {
+                name = "Commands",
                 order = 20,
                 type = "group",
                 inline = true,
                 args = {
-                    new = {
-                        name = "Create Item",
+                    add = {
+                        name = "Add Command",
                         order = 10,
                         width = "double",
-                        type= "execute",
+                        type = "execute",
                         func = function(info)
-                            self:OnAddItem(group.id)
+                            self:OnAddItem(node)
                         end,
                     },
                 }
             },
         }
     }
-end
 
-local function getItemValue(info)
-    local itemId = info[#info - 2]
-    if info.type == "color" then
-        local color = Core.Database.db.profile.items[itemId][info[#info]]
-        return unpack(color ~= nil and color or {})
-    else
-        return Core.Database.db.profile.items[itemId][info[#info]]
+    for order, childNode in pairs(node.children) do
+        arg.args[childNode.command.id] = self:BuildCommand(childNode, order)
     end
+
+    return arg
 end
 
-local function setItemValue(info, value, ...)
-    local itemId = info[#info - 2]
-    if info.type == "color" then
-        Core.Database.db.profile.items[itemId][info[#info]] = {value, ...}
-    else
-        Core.Database.db.profile.items[itemId][info[#info]] = value
-    end
-end
-
-local function getItemValueParent(info)
-    local itemId = getItemValue(info) or NIL_PARENT_ITEM_ID
-    return Options.parentData.fromDatabase[itemId] or NIL_PARENT_SELECT_ID
-end
-
-local function setItemValueParent(info, value, ...)
-    local parentId = Options.parentData.toDatabase[value]
-    setItemValue(info, parentId ~= NIL_PARENT_ITEM_ID and parentId or nil)
-end
-
-function Options:CreateItem(item, order)
-    return {
-        name = item.name,
-        desc = item.command,
-        order = order,
-        type = "group",
-        childGroups = "tree",
-        args = {
-            item = {
-                name = "Item",
-                order = 1,
-                type = "group",
-                inline = true,
-                args = {
-                    name = {
-                        name = "Name",
-                        order = 10,
-                        width = "normal",
-                        type = "input",
-                        get = getItemValue,
-                        set = setItemValue,
-                    },
-                    delete = {
-                        name = "Delete Item",
-                        order = 11,
-                        width = "normal",
-                        type= "execute",
-                        confirm = true,
-                        confirmText = ("Delete '%s' item?"):format(item.name),
-                        func = function(info)
-                            self:OnRemoveItem(item.id)
-                        end,
-                    },
-                    settings = AceConfigDialog:Header("Settings", 20),
-                    pinned = {
-                        name = "Pinned",
-                        order = 25,
-                        type = "toggle",
-                        get = getItemValue,
-                        set = setItemValue,
-                    },
-                    color = {
-                        name = "Color",
-                        order = 26,
-                        type = "color",
-                        hasAlpha = false,
-                        get = getItemValue,
-                        set = setItemValue,
-                    },
-                    br50 = AceConfigDialog:Break(50),
-                    parentId = {
-                        name = "Parent",
-                        order = 52,
-                        width = "double",
-                        type = "select",
-                        style = "dropdown",
-                        values = self.parentData.values,
-                        get = getItemValueParent,
-                        set = setItemValueParent,
-                    },
-                    br100 = AceConfigDialog:Break(100),
-                    command = {
-                        name = "Command",
-                        order = 101,
-                        width = 1.5,
-                        type = "input",
-                        get = getItemValue,
-                        set = setItemValue,
-                    },
-                    execute = {
-                        name = "Execute",
-                        order = 102,
-                        width = 0.5,
-                        type= "execute",
-                        func = function(info)
-                            self:OnExecuteItem(item.id)
-                        end,
-                    },
-                    br1000 = AceConfigDialog:Break(1000),
-                },
-            },
-        }
-    }
-end
-
-function Options:ClearMenu()
-    local args = self.root.args.menu.args
-    for key, _ in pairs(args) do
-        if key:match("^" .. Core.Utils.idPrefix) then
-            args[key] = nil
-        end
-    end
-end
-
-function Options:UpdateParentData()
-    local selectItems = Core.Database.db.profile.items
-    selectItems = Core.Utils.Sort(selectItems, Core.ItemNameComparer)
-    selectItems = Core.Utils.Select(selectItems, function(_, item) return {
-        key = item.id,
-        value = item.name,
-    } end)
-    table.insert(selectItems, 1, {
-        key = NIL_PARENT_ITEM_ID,
-        value = "|cff909090<No Parent>",
-    })
-
-    self.parentData = {
-        values = {},
-        fromDatabase = {},
-        toDatabase = {},
-    }
-
-    for i, selectItem in pairs(selectItems) do
-        self.parentData.values[i] = selectItem.value
-        self.parentData.fromDatabase[selectItem.key] = i
-        self.parentData.toDatabase[i] = selectItem.key
-    end
-end
-
-function Options:Update()
-    self:UpdateParentData()
-    self:ClearMenu()
-    for order, group in pairs(Core.Utils.Sort(Core.Database.db.profile.groups, Core.GroupComparer)) do
-        self.root.args.menu.args[group.id] = self:CreateGroup(group, order)
-    end
-    for order, item in pairs(Core.Utils.Sort(Core.Database.db.profile.items, Core.ItemComparer)) do
-        self.root.args.menu.args[item.groupId].args[item.id] = self:CreateItem(item, order)
-    end
+function Options:UpdateOptions()
+    self.options.args[Core.Database.rootCommandId] = self:BuildCommand(Core.Database.commandTree.rootNode, 150)
 end
 
 function Options:Build()
-    Core.Database:FireDataChanged()
-    
-    if self.root == nil then
-        self:CreateRoot()
+    if self.options == nil then
+        Core.Database:FireDataChanged("BuildOptions")
+        self:BuildOptions()
     end
-    self:Update()
-
-    return self.root
+    self:UpdateOptions()
+    return self.options
 end
 
 function Options:Initialize()
