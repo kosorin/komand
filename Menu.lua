@@ -3,72 +3,72 @@ local KOMAND, Core = ...
 local Menu = {}
 Core.Menu = Menu
 
-function Menu:BuildMenu(group, isRoot)
-    local menu = {}
-
-    if isRoot then
-        table.insert(menu, {
-            text = group.name or KOMAND,
-            notCheckable = true,
-            isTitle = true,
-        })
-    end
-
-    local items = Core.Database.db.profile.items or {}
-    items = Core.Utils.Where(items, function(_, item)
-        return item.groupId == group.id
-    end)
-    items = Core.Utils.Sort(items, Core.ItemComparer)
-
-    for _, item in ipairs(items) do
-        table.insert(menu, {
-            text = item.name,
-            colorCode = ("|cff%02x%02x%02x"):format(unpack(Core.Utils.Select(item.color, function(_, x)
-                return x * 255
-            end), 1, 3)),
-            func = function()
-                Core.Execute(item.command)
-            end,
-            notCheckable = true,
-            tooltipTitle = item.name,
-            tooltipText = item.command,
-        })
-    end
-
-    return menu
+local function executeCommand(_, command)
+    Core.Execute(command)
 end
 
-function Menu:Show(groupName)
-    local menu
+local function createMenuButton(node, isTitle)
+    local info = {}
+    
+    info.isTitle = isTitle
+    info.notCheckable = true
+    info.text = node.text
+    info.hasArrow = not isTitle and getn(node.children) > 0
+    
+    local item = node.item
+    if item then
+        info.value = item.id
+        
+        info.isTitle = false
+        info.colorCode = Core.Utils.ToColorCode(item.color)
 
-    local group = Core.Utils.FindByName(Core.Database.db.profile.groups, groupName)
-    if group then
-        menu = self:BuildMenu(group, true)
-    else
-        menu = {
-            {
-                text = "Menu",
-                notCheckable = true,
-                isTitle = true,
-            },
-        }
-        for _, group in pairs(Core.Utils.Sort(Core.Database.db.profile.groups, Core.GroupComparer)) do
-            local subMenu = {
-                text = group.name,
-                notCheckable = true,
-                menuList = self:BuildMenu(group, false),
-            }
-            subMenu.hasArrow = getn(subMenu.menuList) > 0
-            table.insert(menu, subMenu)
-        end
+        info.tooltipTitle = item.name
+        info.tooltipText = item.command
+
+        info.func = executeCommand
+        info.arg1 = item.command
     end
 
-    if menu then
-        if not self.frame then
-            self.frame = CreateFrame("Frame", nil, nil, "UIDropDownMenuTemplate")
+    return info
+end
+
+local function createMenuFrame()
+    local frame = CreateFrame("Frame", nil, nil, "UIDropDownMenuTemplate")
+    frame.displayMode = "MENU"
+    frame.initialize = function(_, level)
+        if not level then
+            return
         end
-        EasyMenu(menu, self.frame, "cursor", 0, 0, "MENU");
+
+        local parentNode = UIDROPDOWNMENU_MENU_VALUE
+            and Core.Database.menu.nodes[UIDROPDOWNMENU_MENU_VALUE]
+            or Core.Database.menu.root
+        if not parentNode then
+            return
+        end
+
+        -- Title
+        if level == 1 then
+            UIDropDownMenu_AddButton(createMenuButton(parentNode, true), level)
+        end
+
+        -- Items
+        for _, node in pairs(parentNode.children) do
+            UIDropDownMenu_AddButton(createMenuButton(node, false), level)
+        end
     end
+    return frame
+end
+
+function Menu:Show(itemName)
+    if not self.frame then
+        self.frame = createMenuFrame()
+    end
+
+    local item = Core.Utils.FindByName(Core.Database.db.profile.items, itemName)
+    local itemId = item and item.id or nil
+
+    ToggleDropDownMenu(1, itemId, self.frame, "cursor", 0, 0)
 end
 
 function Menu:Hide()

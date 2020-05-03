@@ -79,17 +79,20 @@ local function generateMenu()
         return Core.ItemComparer(a.item, b.item)
     end)
 
-    local knodes = {}
+    local keyedNodes = {}
     for _, node in pairs(nodes) do
-        knodes[node.item.id] = node
+        keyedNodes[node.item.id] = node
     end
 
     for _, node in pairs(nodes) do
-        local parent = node.item.parentId and knodes[node.item.parentId] or root
+        local parent = node.item.parentId and keyedNodes[node.item.parentId] or root
         table.insert(parent.children, node)
     end
 
-    return root
+    return {
+        root = root,
+        nodes = keyedNodes,
+    }
 end
 
 function Database:OnDataChanged()
