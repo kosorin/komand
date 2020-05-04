@@ -56,9 +56,12 @@ function Database:AddCommand(parentId)
 end
 
 function Database:RemoveCommand(id)
+    local command = Database.db.profile.commands[id]
     removeCommand(id)
     
     self:FireDataChanged("RemoveCommand")
+
+    return command
 end
 
 local function buildCommandTree()

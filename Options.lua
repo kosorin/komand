@@ -2,6 +2,7 @@ local KOMAND, Core = ...
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 function AceConfigDialog:Break(order)
@@ -25,40 +26,22 @@ end
 local Options = {}
 Core.Options = Options
 
-local function selectCommandNode(commandId)
-    local node = commandId and Core.Database.commandTree.nodes[commandId] or Core.Database.commandTree.rootNode
-    AceConfigDialog:SelectGroup(KOMAND, unpack(node.path))
-end
+local selectCommand
 
 function Options:Open()
     AceConfigDialog:Open(KOMAND)
-    selectCommandNode(Core.Database.rootCommandId)
+    selectCommand(Core.Database.rootCommandId)
 end
 
 function Options:Close()
     AceConfigDialog:Close(KOMAND)
 end
 
-function Options:OnAddItem(node)
-    local command = Core.Database:AddCommand(node.command.id)
-    selectCommandNode(command.id)
-end
-
-function Options:OnRemoveItem(node)
-    Core.Database:RemoveCommand(node.command.id)
-    selectCommandNode(node.command.parentId)
-end
-
-function Options:OnExecuteItem(commandId)
-    local command = Core.Database.db.profile.commands[commandId]
-    Core.Execute(command.value)
-end
-
 
 function Options:BuildOptions()
     self.options = {
         type = "group",
-        childGroups = "tree",
+        childGroups = "tab",
         args = {},
     }
 
@@ -84,7 +67,8 @@ function Options:BuildOptions()
 
     -- GUI
     self.options.args.general = self:BuildGeneralOptions(100)
-    self.options.args.profiles = self:BuildProfilesOptions(200)
+    self.options.args.commands = self:BuildGeneralCommands(200)
+    self.options.args.profiles = self:BuildProfilesOptions(300)
 end
 
 function Options:BuildGeneralOptions(order)
@@ -97,18 +81,38 @@ function Options:BuildGeneralOptions(order)
     }
 end
 
+function Options:BuildGeneralCommands(order)
+    return {
+        name = "Commands",
+        order = order,
+        cmdHidden = true,
+        type = "group",
+        args = {
+            add = {
+                name = "Add Command",
+                order = 0,
+                type = "execute",
+                handler = self,
+                func = "OnAddCommand",
+            },
+            -- order 100 reserved for command tree
+        },
+    }
+end
+
 function Options:BuildProfilesOptions(order)
     local node =  AceDBOptions:GetOptionsTable(Core.Database.db, true)
     node.order = order
     return node
 end
 
-local function argDisabled_command_rootCommand(info)
-    local commandId = info[#info - 2]
-    return commandId == Core.Database.rootCommandId
+
+function selectCommand(commandId)
+    local node = commandId and Core.Database.commandTree.nodes[commandId] or Core.Database.commandTree.rootNode
+    AceConfigDialog:SelectGroup(KOMAND, "commands", unpack(node.path))
 end
 
-local function argGet_command(info)
+local function getCommand(info)
     local commandId = info[#info - 2]
     local property = info[#info]
     if info.type == "color" then
@@ -119,7 +123,7 @@ local function argGet_command(info)
     end
 end
 
-local function argSet_command(info, value, ...)
+local function setCommand(info, value, ...)
     local commandId = info[#info - 2]
     local property = info[#info]
     if info.type == "color" then
@@ -130,14 +134,19 @@ local function argSet_command(info, value, ...)
     Core.Database:FireDataChanged("SetProperty", property)
 end
 
-local function argGet_command_parentId(info)
-    return argGet_command(info)
+local function disabledCommand_rootCommand(info)
+    local commandId = info[#info - 2]
+    return commandId == Core.Database.rootCommandId
 end
 
-local function argSet_command_parentId(info, value, ...)
+local function getCommand_parentId(info)
+    return getCommand(info)
+end
+
+local function setCommand_parentId(info, value, ...)
     local commandId = info[#info - 2]
-    argSet_command(info, value, ...)
-    selectCommandNode(commandId)
+    setCommand(info, value, ...)
+    selectCommand(commandId)
 end
 
 local function traverseComandTree_parentId(node, excludeCommandId, func)
@@ -150,7 +159,7 @@ local function traverseComandTree_parentId(node, excludeCommandId, func)
     end
 end
 
-local function argValues_command_parentId(info)
+local function valuesCommand_parentId(info)
     local commandId = info[#info - 2]
 
     local values = {}
@@ -161,7 +170,7 @@ local function argValues_command_parentId(info)
     return values
 end
 
-local function argSorting_command_parentId(info)
+local function sortingCommand_parentId(info)
     local commandId = info[#info - 2]
     
     local sorting = {}
@@ -172,16 +181,48 @@ local function argSorting_command_parentId(info)
     return sorting
 end
 
+function Options:OnAddCommand(info)
+    local command = Core.Database:AddCommand(self.lastCommandId)
+    selectCommand(command.id)
+end
+
+function Options:OnRemoveCommand(info)
+    local commandId = info.arg.command.id
+    local command = Core.Database:RemoveCommand(commandId)
+    selectCommand(command.parentId)
+end
+
+function Options:OnExecuteCommand(info)
+    local commandId = info.arg.command.id
+    local command = Core.Database.db.profile.commands[commandId]
+    Core.Execute(command.value)
+end
+
+function Options:OnCommandNodeChanged(info)
+    local command = info.arg.command
+
+    self.lastCommandId = command.id
+    
+    return true
+end
+
 function Options:BuildCommand(node, order)
     local command = node.command
 
     local arg = {
         name = command.name,
         order = order,
-        cmdHidden = true,
         type = "group",
         childGroups = "tree",
         args = {
+            selector = {
+                name = "You can't see this",
+                order = 0,
+                handler = self,
+                arg = node,
+                hidden = "OnCommandNodeChanged",
+                type = "input",
+            },
             command = {
                 name = "Command",
                 order = 10,
@@ -193,30 +234,34 @@ function Options:BuildCommand(node, order)
                         order = 10,
                         width = "normal",
                         type = "input",
-                        get = argGet_command,
-                        set = argSet_command,
+                        handler = self,
+                        arg = node,
+                        get = getCommand,
+                        set = setCommand,
                     },
                     remove = {
-                        disabled = argDisabled_command_rootCommand,
+                        disabled = disabledCommand_rootCommand,
                         name = "Remove Command",
-                        order = 11,
+                        order = 15,
                         width = "normal",
                         type = "execute",
                         confirm = true,
                         confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children."):format(command.name),
-                        func = function(info)
-                            self:OnRemoveItem(node)
-                        end,
+                        handler = self,
+                        arg = node,
+                        func = "OnRemoveCommand",
                     },
                     settings = AceConfigDialog:Header("Settings", 20),
                     pinned = {
-                        disabled = argDisabled_command_rootCommand,
+                        disabled = disabledCommand_rootCommand,
                         name = "Pinned",
                         order = 25,
                         width = 0.75,
                         type = "toggle",
-                        get = argGet_command,
-                        set = argSet_command,
+                        handler = self,
+                        arg = node,
+                        get = getCommand,
+                        set = setCommand,
                     },
                     color = {
                         name = "Color",
@@ -224,21 +269,25 @@ function Options:BuildCommand(node, order)
                         width = 0.75,
                         type = "color",
                         hasAlpha = false,
-                        get = argGet_command,
-                        set = argSet_command,
+                        handler = self,
+                        arg = node,
+                        get = getCommand,
+                        set = setCommand,
                     },
                     br50 = AceConfigDialog:Break(50),
                     parentId = {
-                        disabled = argDisabled_command_rootCommand,
+                        disabled = disabledCommand_rootCommand,
                         name = "Parent",
                         order = 52,
                         width = "double",
                         type = "select",
                         style = "dropdown",
-                        values = argValues_command_parentId,
-                        sorting = argSorting_command_parentId,
-                        get = argGet_command_parentId,
-                        set = argSet_command_parentId,
+                        handler = self,
+                        arg = node,
+                        values = valuesCommand_parentId,
+                        sorting = sortingCommand_parentId,
+                        get = getCommand_parentId,
+                        set = setCommand_parentId,
                     },
                     br100 = AceConfigDialog:Break(100),
                     value = {
@@ -246,37 +295,22 @@ function Options:BuildCommand(node, order)
                         order = 101,
                         width = 1.5,
                         type = "input",
-                        get = argGet_command,
-                        set = argSet_command,
+                        handler = self,
+                        arg = node,
+                        get = getCommand,
+                        set = setCommand,
                     },
                     execute = {
                         name = "Execute",
                         order = 102,
                         width = 0.5,
                         type = "execute",
-                        func = function(info)
-                            self:OnExecuteItem(command.id)
-                        end,
+                        handler = self,
+                        arg = node,
+                        func = "OnExecuteCommand",
                     },
                     br1000 = AceConfigDialog:Break(1000),
                 },
-            },
-            children = {
-                name = "Commands",
-                order = 20,
-                type = "group",
-                inline = true,
-                args = {
-                    add = {
-                        name = "Add Command",
-                        order = 10,
-                        width = "double",
-                        type = "execute",
-                        func = function(info)
-                            self:OnAddItem(node)
-                        end,
-                    },
-                }
             },
         }
     }
@@ -289,7 +323,7 @@ function Options:BuildCommand(node, order)
 end
 
 function Options:UpdateOptions()
-    self.options.args[Core.Database.rootCommandId] = self:BuildCommand(Core.Database.commandTree.rootNode, 150)
+    self.options.args.commands.args[Core.Database.rootCommandId] = self:BuildCommand(Core.Database.commandTree.rootNode, 100)
 end
 
 function Options:Build()
@@ -304,5 +338,5 @@ end
 function Options:Initialize()
     self:Build()
     AceConfig:RegisterOptionsTable(KOMAND, function() return self:Build() end, {"k", "kmd", "komand"})
-    AceConfigDialog:SetDefaultSize(KOMAND, 600, 600)
+    AceConfigDialog:SetDefaultSize(KOMAND, 615, 550)
 end
