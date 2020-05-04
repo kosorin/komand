@@ -45,7 +45,7 @@ function Utils.FindByName(items, name)
         return nil
     end
     return Core.Utils.Find(items, function(_, item)
-        return item.name == name
+        return item.name:upper() == name:upper()
     end) or Core.Utils.Find(items, function(_, item)
         local function normalize(name)
             return name:gsub("%s+", ""):upper()
