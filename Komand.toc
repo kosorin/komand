@@ -17,9 +17,9 @@ Libs\AceConsole-3.0\AceConsole-3.0.xml
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 
+Core.lua
+
 Utils.lua
 Menu.lua
 Options.lua
 Database.lua
-Addon.lua
-Core.lua

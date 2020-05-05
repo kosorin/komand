@@ -1,5 +1,6 @@
-local KOMAND, Core = ...
+local _, Core = ...
 
+--> Libraries
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
@@ -23,20 +24,50 @@ function AceConfigDialog:Header(name, order)
     }
 end
 
-local Options = {}
-Core.Options = Options
+--> Locals
+local App = Core.App
+local Console = Core.Console
+local Command = Core.Command
+local Database = Core.Database
+local Options = Core.Options
+local Menu = Core.Menu
+local Utils = Core.Utils
+
+-------------------------------------------------------------------------------
+-- Options
+-------------------------------------------------------------------------------
+
+--> Forward declarations
 
 local selectCommand
+local getCommand, setCommand, disabledCommand_rootCommand
+local getCommand_parentId, setCommand_parentId, valuesCommand_parentId, sortingCommand_parentId
+
+--> Functions
+
+function Options:Initialize()
+    self:Build()
+    AceConfig:RegisterOptionsTable(Core.name, function() return self:Build() end, Core.slash)
+    AceConfigDialog:SetDefaultSize(Core.name, 615, 550)
+end
 
 function Options:Open()
-    AceConfigDialog:Open(KOMAND)
-    selectCommand(Core.Database.rootCommandId)
+    AceConfigDialog:Open(Core.name)
+    selectCommand(Database.rootCommandId)
 end
 
 function Options:Close()
-    AceConfigDialog:Close(KOMAND)
+    AceConfigDialog:Close(Core.name)
 end
 
+function Options:Build()
+    if self.options == nil then
+        Database:FireDataChanged("BuildOptions")
+        self:BuildOptions()
+    end
+    self:UpdateOptions()
+    return self.options
+end
 
 function Options:BuildOptions()
     self.options = {
@@ -52,7 +83,7 @@ function Options:BuildOptions()
         guiHidden = true,
         type = "input",
         set = function(info, value)
-            Core.Menu:Show(value)
+            Menu:Show(value)
         end
     }
     self.options.args.options = {
@@ -67,7 +98,7 @@ function Options:BuildOptions()
 
     -- GUI
     self.options.args.general = self:BuildGeneralOptions(100)
-    self.options.args.commands = self:BuildGeneralCommands(200)
+    self.options.args.commands = self:BuildCommandsOptions(200)
     self.options.args.profiles = self:BuildProfilesOptions(300)
 end
 
@@ -81,7 +112,7 @@ function Options:BuildGeneralOptions(order)
     }
 end
 
-function Options:BuildGeneralCommands(order)
+function Options:BuildCommandsOptions(order)
     return {
         name = "Commands",
         order = order,
@@ -101,109 +132,13 @@ function Options:BuildGeneralCommands(order)
 end
 
 function Options:BuildProfilesOptions(order)
-    local node =  AceDBOptions:GetOptionsTable(Core.Database.db, true)
+    local node =  AceDBOptions:GetOptionsTable(Database.db, true)
     node.order = order
     return node
 end
 
-
-function selectCommand(commandId)
-    local node = commandId and Core.Database.commandTree.nodes[commandId] or Core.Database.commandTree.rootNode
-    AceConfigDialog:SelectGroup(KOMAND, "commands", unpack(node.path))
-end
-
-local function getCommand(info)
-    local commandId = info[#info - 2]
-    local property = info[#info]
-    if info.type == "color" then
-        local color = Core.Database.db.profile.commands[commandId][property]
-        return unpack(color ~= nil and color or {})
-    else
-        return Core.Database.db.profile.commands[commandId][property]
-    end
-end
-
-local function setCommand(info, value, ...)
-    local commandId = info[#info - 2]
-    local property = info[#info]
-    if info.type == "color" then
-        Core.Database.db.profile.commands[commandId][property] = {value, ...}
-    else
-        Core.Database.db.profile.commands[commandId][property] = value
-    end
-    Core.Database:FireDataChanged("SetProperty", property)
-end
-
-local function disabledCommand_rootCommand(info)
-    local commandId = info[#info - 2]
-    return commandId == Core.Database.rootCommandId
-end
-
-local function getCommand_parentId(info)
-    return getCommand(info)
-end
-
-local function setCommand_parentId(info, value, ...)
-    local commandId = info[#info - 2]
-    setCommand(info, value, ...)
-    selectCommand(commandId)
-end
-
-local function traverseComandTree_parentId(node, excludeCommandId, func)
-    if node.command.id == excludeCommandId then
-        return
-    end
-    func(node)
-    for _, childNode in pairs(node.children) do
-        traverseComandTree_parentId(childNode, excludeCommandId, func)
-    end
-end
-
-local function valuesCommand_parentId(info)
-    local commandId = info[#info - 2]
-
-    local values = {}
-    traverseComandTree_parentId(Core.Database.commandTree.rootNode, commandId, function(node)
-        values[node.command.id] = ("   "):rep(#node.path - 1) .. node.command.name
-    end)
-
-    return values
-end
-
-local function sortingCommand_parentId(info)
-    local commandId = info[#info - 2]
-    
-    local sorting = {}
-    traverseComandTree_parentId(Core.Database.commandTree.rootNode, commandId, function(node)
-        table.insert(sorting, node.command.id)
-    end)
-
-    return sorting
-end
-
-function Options:OnAddCommand(info)
-    local command = Core.Database:AddCommand(self.lastCommandId)
-    selectCommand(command.id)
-end
-
-function Options:OnRemoveCommand(info)
-    local commandId = info.arg.command.id
-    local command = Core.Database:RemoveCommand(commandId)
-    selectCommand(command.parentId)
-end
-
-function Options:OnExecuteCommand(info)
-    local commandId = info.arg.command.id
-    local command = Core.Database.db.profile.commands[commandId]
-    Core.Execute(command.value)
-end
-
-function Options:OnCommandNodeChanged(info)
-    local command = info.arg.command
-
-    self.lastCommandId = command.id
-    
-    return true
+function Options:UpdateOptions()
+    self.options.args.commands.args[Database.rootCommandId] = self:BuildCommand(Database.commandTree.rootNode, 100)
 end
 
 function Options:BuildCommand(node, order)
@@ -284,10 +219,10 @@ function Options:BuildCommand(node, order)
                         style = "dropdown",
                         handler = self,
                         arg = node,
-                        values = valuesCommand_parentId,
-                        sorting = sortingCommand_parentId,
                         get = getCommand_parentId,
                         set = setCommand_parentId,
+                        values = valuesCommand_parentId,
+                        sorting = sortingCommand_parentId,
                     },
                     br100 = AceConfigDialog:Break(100),
                     value = {
@@ -322,21 +257,103 @@ function Options:BuildCommand(node, order)
     return arg
 end
 
-function Options:UpdateOptions()
-    self.options.args.commands.args[Core.Database.rootCommandId] = self:BuildCommand(Core.Database.commandTree.rootNode, 100)
+function Options:OnAddCommand(info)
+    local command = Database:AddCommand(self.lastCommandId)
+    selectCommand(command.id)
 end
 
-function Options:Build()
-    if self.options == nil then
-        Core.Database:FireDataChanged("BuildOptions")
-        self:BuildOptions()
+function Options:OnRemoveCommand(info)
+    local commandId = info.arg.command.id
+    local command = Database:RemoveCommand(commandId)
+    selectCommand(command.parentId)
+end
+
+function Options:OnExecuteCommand(info)
+    local commandId = info.arg.command.id
+    local command = Database.db.profile.commands[commandId]
+    Command.Execute(command.value)
+end
+
+function Options:OnCommandNodeChanged(info)
+    local command = info.arg.command
+
+    self.lastCommandId = command.id
+    
+    return true
+end
+
+--> Local functions
+
+function selectCommand(commandId)
+    local node = commandId and Database.commandTree.nodes[commandId] or Database.commandTree.rootNode
+    AceConfigDialog:SelectGroup(Core.name, "commands", unpack(node.path))
+end
+
+function getCommand(info)
+    local commandId = info[#info - 2]
+    local property = info[#info]
+    if info.type == "color" then
+        local color = Database.db.profile.commands[commandId][property]
+        return unpack(color ~= nil and color or {})
+    else
+        return Database.db.profile.commands[commandId][property]
     end
-    self:UpdateOptions()
-    return self.options
 end
 
-function Options:Initialize()
-    self:Build()
-    AceConfig:RegisterOptionsTable(KOMAND, function() return self:Build() end, {"k", "kmd", "komand"})
-    AceConfigDialog:SetDefaultSize(KOMAND, 615, 550)
+function setCommand(info, value, ...)
+    local commandId = info[#info - 2]
+    local property = info[#info]
+    if info.type == "color" then
+        Database.db.profile.commands[commandId][property] = {value, ...}
+    else
+        Database.db.profile.commands[commandId][property] = value
+    end
+    Database:FireDataChanged("SetProperty", property)
+end
+
+function disabledCommand_rootCommand(info)
+    local commandId = info[#info - 2]
+    return commandId == Database.rootCommandId
+end
+
+function getCommand_parentId(info)
+    return getCommand(info)
+end
+
+function setCommand_parentId(info, value, ...)
+    local commandId = info[#info - 2]
+    setCommand(info, value, ...)
+    selectCommand(commandId)
+end
+
+local function traverseComandTree_parentId(node, excludeCommandId, func)
+    if node.command.id == excludeCommandId then
+        return
+    end
+    func(node)
+    for _, childNode in pairs(node.children) do
+        traverseComandTree_parentId(childNode, excludeCommandId, func)
+    end
+end
+
+function valuesCommand_parentId(info)
+    local commandId = info[#info - 2]
+
+    local values = {}
+    traverseComandTree_parentId(Database.commandTree.rootNode, commandId, function(node)
+        values[node.command.id] = ("   "):rep(#node.path - 1) .. node.command.name
+    end)
+
+    return values
+end
+
+function sortingCommand_parentId(info)
+    local commandId = info[#info - 2]
+    
+    local sorting = {}
+    traverseComandTree_parentId(Database.commandTree.rootNode, commandId, function(node)
+        table.insert(sorting, node.command.id)
+    end)
+
+    return sorting
 end

@@ -1,25 +1,19 @@
-local KOMAND, Core = ...
+local _, Core = ...
 
-local Utils = {
-    idPrefix = "ID-",
-}
-Core.Utils = Utils
+--> Locals
+local App = Core.App
+local Console = Core.Console
+local Command = Core.Command
+local Database = Core.Database
+local Options = Core.Options
+local Menu = Core.Menu
+local Utils = Core.Utils
 
-function Utils.GenerateId(items)
-    local random = math.random
-    local template = Core.Utils.idPrefix .. "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-    local function randomChar(c)
-        local v = (c == "x") and random(0, 0xf) or random(8, 0xb)
-        return ("%x"):format(v)
-    end
+-------------------------------------------------------------------------------
+-- Utils
+-------------------------------------------------------------------------------
 
-    local id
-    repeat
-        id = template:gsub("[xy]", randomChar)
-    until items == nil or items[id] == nil or items[id].id == nil
-
-    return id
-end
+--> Static functions
 
 function Utils.Sort(items, comparer)
     local result = {}
@@ -44,9 +38,9 @@ function Utils.FindByName(items, name)
     if (name or ""):match("^%s*$") then
         return nil
     end
-    return Core.Utils.Find(items, function(_, item)
+    return Utils.Find(items, function(_, item)
         return item.name:upper() == name:upper()
-    end) or Core.Utils.Find(items, function(_, item)
+    end) or Utils.Find(items, function(_, item)
         local function normalize(name)
             return name:gsub("%s+", ""):upper()
         end
@@ -94,7 +88,7 @@ end
 ---@param color table RGB[A] (range 0..1)
 function Utils.ToColorCode(color)
     local max = 255
-    local values = Core.Utils.Select(color, function(_, x)
+    local values = Utils.Select(color, function(_, x)
         return x * max
     end)
     return ("|c%02x%02x%02x%02x"):format(values[4] or max, unpack(values, 1, 3))
