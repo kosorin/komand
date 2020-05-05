@@ -78,9 +78,9 @@ function Database:Initialize()
                 },
                 [self.rootCommandId] = {
                     id = self.rootCommandId,
-                    name = "Menu",
+                    name = Core.name,
                     color = {1, 0.8, 0, 1},
-                    value = "/komand options",
+                    value = ("/%s options"):format(Core.slash[1]),
                 },
             },
         },
