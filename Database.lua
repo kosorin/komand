@@ -24,7 +24,6 @@ local addCommand, removeCommand, buildCommandTree
 --> Static variables
 
 Database.idPrefix = "ID-"
-Database.rootCommandId = Database.idPrefix .. "ROOT-COMMAND"
 
 --> Static functions
 
@@ -75,12 +74,6 @@ function Database:Initialize()
                     color = {1, 1, 1, 1},
                     pinned = false,
                     value = "",
-                },
-                [self.rootCommandId] = {
-                    id = self.rootCommandId,
-                    name = Core.name,
-                    color = {1, 0.8, 0, 1},
-                    value = ("/%s options"):format(Core.slash[1]),
                 },
             },
         },
@@ -135,7 +128,7 @@ function addCommand(parentId)
     local id = Database.GenerateId(profile.commands)
     local command = profile.commands[id]
     command.id = id
-    command.parentId = parentId or Database.rootCommandId
+    command.parentId = parentId
     return command
 end
 
@@ -162,12 +155,14 @@ function buildCommandTree()
         return Database.CommandComparer(a.command, b.command)
     end)
 
-    local rootNode = nodes[Database.rootCommandId]
+    local rootNodes = {}
 
     for _, node in pairs(sortedNodes) do
-        if node.command.id ~= Database.rootCommandId then
-            local parentNode = node.command.parentId and nodes[node.command.parentId] or rootNode
+        local parentNode = node.command.parentId and nodes[node.command.parentId]
+        if parentNode then
             table.insert(parentNode.children, node)
+        else
+            table.insert(rootNodes, node)
         end
     end
 
@@ -180,10 +175,12 @@ function buildCommandTree()
             setCommandNodePath(childNode, path)
         end
     end
-    setCommandNodePath(rootNode, {})
+    for _, node in pairs(rootNodes) do
+        setCommandNodePath(node, {})
+    end
 
     return {
-        rootNode = rootNode,
+        rootNodes = rootNodes,
         nodes = nodes,
     }
 end

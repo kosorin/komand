@@ -72,19 +72,21 @@ function createMenuFrame()
             return
         end
 
-        local node = UIDROPDOWNMENU_MENU_VALUE
-            and Database.commandTree.nodes[UIDROPDOWNMENU_MENU_VALUE]
-            or Database.commandTree.rootNode
-        if not node then
-            return
+        local nodes
+        local node = UIDROPDOWNMENU_MENU_VALUE and Database.commandTree.nodes[UIDROPDOWNMENU_MENU_VALUE]
+        if node then
+            nodes = node.children
+        else
+            nodes = Database.commandTree.rootNodes
         end
 
-        if level == 1 then
+        -- TODO: Maybe add settings for this
+        if level == 1 and node then
             UIDropDownMenu_AddButton(createMenuButton(node, true), level)
         end
 
-        for _, childNode in pairs(node.children) do
-            UIDropDownMenu_AddButton(createMenuButton(childNode, false), level)
+        for _, node in pairs(nodes) do
+            UIDropDownMenu_AddButton(createMenuButton(node, false), level)
         end
     end
     return frame

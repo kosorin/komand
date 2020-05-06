@@ -40,8 +40,13 @@ local Utils = Core.Utils
 --> Forward declarations
 
 local selectCommand
-local getCommand, setCommand, disabledCommand_rootCommand
+local getCommand, setCommand
 local getCommand_parentId, setCommand_parentId, valuesCommand_parentId, sortingCommand_parentId
+
+--> Local variables
+
+local commandOrderOffset = 100
+local nilCommandId = ""
 
 --> Functions
 
@@ -68,8 +73,7 @@ function Options:Open(frame, ...)
         if frame == self.frames.commands then
             local commandName = ...
             local command = Utils.FindByName(Database.db.profile.commands, commandName)
-            local commandId = command and command.id or Database.rootCommandId
-            selectCommand(commandId)
+            selectCommand(command and command.id)
         end
     end
 end
@@ -134,7 +138,7 @@ function Options:BuildCommandsOptions(order)
                 handler = self,
                 func = "OnAddCommand",
             },
-            -- order 100 reserved for command tree
+            -- order {commandOrderOffset}+ is reserved for command tree
         },
     }
 end
@@ -156,7 +160,15 @@ function Options:BuildProfilesOptions(order)
 end
 
 function Options:UpdateOptions()
-    self.options.args.commands.args[Database.rootCommandId] = self:BuildCommand(Database.commandTree.rootNode, 100)
+    for key, arg in pairs(self.options.args.commands.args) do
+        if arg.order >= commandOrderOffset then
+            self.options.args.commands.args[key] = nil
+        end
+    end
+
+    for order, node in pairs(Database.commandTree.rootNodes) do
+        self.options.args.commands.args[node.command.id] = self:BuildCommand(node, commandOrderOffset + order)
+    end
 end
 
 function Options:BuildCommand(node, order)
@@ -187,7 +199,6 @@ function Options:BuildCommand(node, order)
                 set = setCommand,
             },
             remove = {
-                disabled = disabledCommand_rootCommand,
                 name = "Remove Command",
                 order = 15,
                 width = "normal",
@@ -200,7 +211,6 @@ function Options:BuildCommand(node, order)
             },
             settings = AceConfigDialog:Header("Settings", 20),
             pinned = {
-                disabled = disabledCommand_rootCommand,
                 name = "Pinned",
                 order = 25,
                 width = 0.75,
@@ -223,7 +233,6 @@ function Options:BuildCommand(node, order)
             },
             br50 = AceConfigDialog:Break(50),
             parentId = {
-                disabled = disabledCommand_rootCommand,
                 name = "Parent",
                 order = 52,
                 width = "double",
@@ -295,8 +304,8 @@ end
 --> Local functions
 
 function selectCommand(commandId)
-    local node = commandId and Database.commandTree.nodes[commandId] or Database.commandTree.rootNode
-    AceConfigDialog:SelectGroup(Core.name, "commands", unpack(node.path))
+    local node = commandId and Database.commandTree.nodes[commandId]
+    AceConfigDialog:SelectGroup(Core.name, "commands", unpack(node and node.path or {}))
 end
 
 function getCommand(info)
@@ -321,49 +330,52 @@ function setCommand(info, value, ...)
     Database:FireDataChanged("SetProperty", property)
 end
 
-function disabledCommand_rootCommand(info)
-    local commandId = info[#info - 1]
-    return commandId == Database.rootCommandId
-end
-
 function getCommand_parentId(info)
-    return getCommand(info)
+    return getCommand(info) or nilCommandId
 end
 
 function setCommand_parentId(info, value, ...)
     local commandId = info[#info - 1]
-    setCommand(info, value, ...)
+    setCommand(info, value ~= nilCommandId and value or nil, ...)
     selectCommand(commandId)
 end
 
-local function traverseComandTree_parentId(node, excludeCommandId, func)
+local function traverseComandTree_parentId(node, excludeCommandId, result, func)
     if node.command.id == excludeCommandId then
         return
     end
-    func(node)
+    func(node, result)
     for _, childNode in pairs(node.children) do
-        traverseComandTree_parentId(childNode, excludeCommandId, func)
+        traverseComandTree_parentId(childNode, excludeCommandId, result, func)
     end
+end
+
+local function traverseComandTree_parentId_values(node, result)
+    result[node.command.id] = ("   "):rep(#node.path) .. node.command.name
 end
 
 function valuesCommand_parentId(info)
     local commandId = info[#info - 1]
 
-    local values = {}
-    traverseComandTree_parentId(Database.commandTree.rootNode, commandId, function(node)
-        values[node.command.id] = ("   "):rep(#node.path - 1) .. node.command.name
-    end)
+    local values = {[nilCommandId] = "|cff999999<No Parent>"}
+    for _, node in pairs(Database.commandTree.rootNodes) do
+        traverseComandTree_parentId(node, commandId, values, traverseComandTree_parentId_values)
+    end
 
     return values
+end
+
+local function traverseComandTree_parentId_sorting(node, result)
+    table.insert(result, node.command.id)
 end
 
 function sortingCommand_parentId(info)
     local commandId = info[#info - 1]
     
-    local sorting = {}
-    traverseComandTree_parentId(Database.commandTree.rootNode, commandId, function(node)
-        table.insert(sorting, node.command.id)
-    end)
+    local sorting = {nilCommandId}
+    for _, node in pairs(Database.commandTree.rootNodes) do
+        traverseComandTree_parentId(node, commandId, sorting, traverseComandTree_parentId_sorting)
+    end
 
     return sorting
 end
