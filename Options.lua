@@ -55,7 +55,7 @@ function Options:Initialize()
 
     AceConfig:RegisterOptionsTable(Core.name, function() return self:Build() end, Core.slash)
     AceConfigDialog:SetDefaultSize(Core.name, 615, 550)
-    
+
     self.frames = {
         commands = AceConfigDialog:AddToBlizOptions(Core.name, nil, nil, "commands"),
         general = AceConfigDialog:AddToBlizOptions(Core.name, self.options.args.general.name, Core.name, "general"),
@@ -154,7 +154,7 @@ function Options:BuildGeneralOptions(order)
 end
 
 function Options:BuildProfilesOptions(order)
-    local node =  AceDBOptions:GetOptionsTable(Database.db, true)
+    local node = AceDBOptions:GetOptionsTable(Database.db, true)
     node.order = order
     return node
 end
@@ -297,7 +297,7 @@ function Options:OnCommandNodeChanged(info)
     local command = info.arg.command
 
     self.lastCommandId = command.id
-    
+
     return true
 end
 
@@ -323,7 +323,7 @@ function setCommand(info, value, ...)
     local commandId = info[#info - 1]
     local property = info[#info]
     if info.type == "color" then
-        Database.db.profile.commands[commandId][property] = {value, ...}
+        Database.db.profile.commands[commandId][property] = { value, ... }
     else
         Database.db.profile.commands[commandId][property] = value
     end
@@ -357,7 +357,7 @@ end
 function valuesCommand_parentId(info)
     local commandId = info[#info - 1]
 
-    local values = {[nilCommandId] = "|cff999999<No Parent>"}
+    local values = { [nilCommandId] = "|cff999999<No Parent>" }
     for _, node in pairs(Database.commandTree.rootNodes) do
         traverseComandTree_parentId(node, commandId, values, traverseComandTree_parentId_values)
     end
@@ -371,8 +371,8 @@ end
 
 function sortingCommand_parentId(info)
     local commandId = info[#info - 1]
-    
-    local sorting = {nilCommandId}
+
+    local sorting = { nilCommandId }
     for _, node in pairs(Database.commandTree.rootNodes) do
         traverseComandTree_parentId(node, commandId, sorting, traverseComandTree_parentId_sorting)
     end

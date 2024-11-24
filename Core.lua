@@ -27,7 +27,7 @@ local Utils = Core.Utils
 
 --> Initialize
 Core.name = Core.App.name
-Core.slash = {"komand", "kmd", "k"} -- keep order
+Core.slash = { "komand", "kmd", "k" } -- keep order
 
 -------------------------------------------------------------------------------
 --> App

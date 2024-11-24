@@ -71,7 +71,7 @@ function Database:Initialize()
                     id = nil,
                     parentId = nil,
                     name = "*New Command",
-                    color = {1, 1, 1, 1},
+                    color = { 1, 1, 1, 1 },
                     pinned = false,
                     value = "",
                 },
@@ -117,7 +117,7 @@ function Database:OnDataChanged(...)
 end
 
 function Database:FireDataChanged(...)
-	self.db.callbacks:Fire("DataChanged", ...)
+    self.db.callbacks:Fire("DataChanged", ...)
 end
 
 --> Local functions
@@ -146,11 +146,13 @@ function removeCommand(id)
 end
 
 function buildCommandTree()
-    local nodes = Utils.Select(Database.db.profile.commands, function(_, command) return {
-        command = command,
-        path = nil,
-        children = {},
-    } end)
+    local nodes = Utils.Select(Database.db.profile.commands, function(_, command)
+        return {
+            command = command,
+            path = nil,
+            children = {},
+        }
+    end)
     local sortedNodes = Utils.Sort(nodes, function(a, b)
         return Database.CommandComparer(a.command, b.command)
     end)
@@ -167,7 +169,7 @@ function buildCommandTree()
     end
 
     local function setCommandNodePath(node, parentPath)
-        local path = {unpack(parentPath)}
+        local path = { unpack(parentPath) }
         table.insert(path, node.command.id)
 
         node.path = path

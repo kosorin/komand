@@ -22,7 +22,7 @@ local createMenuFrame
 function Menu:Show(commandName)
     local command = Utils.FindByName(Database.db.profile.commands, commandName)
     local commandId = command and command.id or nil
-    
+
     if not self.frame then
         self.frame = createMenuFrame()
     end
@@ -43,7 +43,7 @@ end
 
 local function createMenuButton(node, isMain)
     local info = {}
-    
+
     local command = node.command
 
     info.notCheckable = true
@@ -52,7 +52,7 @@ local function createMenuButton(node, isMain)
 
     info.value = command.id
     info.text = command.name
-    
+
     info.colorCode = Utils.ToColorCode(command.color)
 
     info.tooltipTitle = command.name
