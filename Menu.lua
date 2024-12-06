@@ -86,7 +86,9 @@ function createMenuFrame()
         end
 
         for _, node in pairs(nodes) do
-            UIDropDownMenu_AddButton(createMenuButton(node, false), level)
+            if node.command.enabled then
+                UIDropDownMenu_AddButton(createMenuButton(node, false), level)
+            end
         end
     end
     return frame

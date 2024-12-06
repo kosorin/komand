@@ -30,10 +30,10 @@ Database.idPrefix = "ID-"
 function Database.CommandComparer(a, b)
     local aa, bb
 
-    bb = (a ~= nil and a.pinned and 1 or 0)
-    aa = (b ~= nil and b.pinned and 1 or 0)
+    bb = (a ~= nil and a.order or 0)
+    aa = (b ~= nil and b.order or 0)
     if aa ~= bb then
-        return aa < bb
+        return aa > bb
     end
 
     aa = a.name:upper()
@@ -70,9 +70,10 @@ function Database:Initialize()
                 ["**"] = {
                     id = nil,
                     parentId = nil,
+                    enabled = true,
                     name = "*New Command",
                     color = { 1, 1, 1, 1 },
-                    pinned = false,
+                    order = 0,
                     value = "",
                 },
             },

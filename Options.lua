@@ -40,8 +40,10 @@ local Utils = Core.Utils
 --> Forward declarations
 
 local selectCommand
-local getCommand, setCommand
-local getCommand_parentId, setCommand_parentId, valuesCommand_parentId, sortingCommand_parentId
+local getValue, setValue
+local getColor, setColor
+local getNumber, setNumber, validateNumber
+local getParentId, setParentId, getParentValues, parentValuesSorting
 
 --> Local variables
 
@@ -188,20 +190,19 @@ function Options:BuildCommand(node, order)
                 hidden = "OnCommandNodeChanged",
                 type = "input",
             },
-            name = {
-                name = "Name",
+            enabled = {
+                name = "Enabled",
                 order = 10,
-                width = "normal",
-                type = "input",
+                width = 0.5,
+                type = "toggle",
                 handler = self,
                 arg = node,
-                get = getCommand,
-                set = setCommand,
+                get = getValue,
+                set = setValue,
             },
             remove = {
                 name = "Remove Command",
-                order = 15,
-                width = "normal",
+                order = 11,
                 type = "execute",
                 confirm = true,
                 confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children."):format(command.name),
@@ -209,57 +210,72 @@ function Options:BuildCommand(node, order)
                 arg = node,
                 func = "OnRemoveCommand",
             },
-            settings = AceConfigDialog:Header("Settings", 20),
-            pinned = {
-                name = "Pinned",
-                order = 25,
-                width = 0.75,
-                type = "toggle",
+            br20 = AceConfigDialog:Break(20),
+            name = {
+                name = "Name",
+                order = 21,
+                width = 1.0,
+                type = "input",
                 handler = self,
                 arg = node,
-                get = getCommand,
-                set = setCommand,
+                get = getValue,
+                set = setValue,
             },
             color = {
                 name = "Color",
-                order = 26,
-                width = 0.75,
+                desc = "Color of the text in the context menu.",
+                order = 22,
+                width = 0.5,
                 type = "color",
                 hasAlpha = false,
                 handler = self,
                 arg = node,
-                get = getCommand,
-                set = setCommand,
+                get = getColor,
+                set = setColor,
+            },
+            br30 = AceConfigDialog:Break(30),
+            order = {
+                name = "Order",
+                desc = "Order of the command in the context menu.",
+                order = 31,
+                width = 0.5,
+                type = "input",
+                handler = self,
+                arg = node,
+                get = getNumber,
+                set = setNumber,
+                validate = validateNumber,
             },
             br50 = AceConfigDialog:Break(50),
             parentId = {
                 name = "Parent",
-                order = 52,
-                width = "double",
+                order = 51,
+                width = 1.5,
                 type = "select",
                 style = "dropdown",
                 handler = self,
                 arg = node,
-                get = getCommand_parentId,
-                set = setCommand_parentId,
-                values = valuesCommand_parentId,
-                sorting = sortingCommand_parentId,
+                get = getParentId,
+                set = setParentId,
+                values = getParentValues,
+                sorting = parentValuesSorting,
             },
             br100 = AceConfigDialog:Break(100),
             value = {
                 name = "Command",
                 order = 101,
-                width = 1.5,
+                width = "full",
                 type = "input",
+                multiline = 5,
                 handler = self,
                 arg = node,
-                get = getCommand,
-                set = setCommand,
+                get = getValue,
+                set = setValue,
             },
-            execute = {
-                name = "Execute",
+            test = {
+                name = "Test Command",
+                desc = "Execute the command. For testing purposes.",
                 order = 102,
-                width = 0.5,
                 type = "execute",
                 handler = self,
                 arg = node,
@@ -308,73 +324,96 @@ function selectCommand(commandId)
     AceConfigDialog:SelectGroup(Core.name, "commands", unpack(node and node.path or {}))
 end
 
-function getCommand(info)
+function getValue(info)
     local commandId = info[#info - 1]
     local property = info[#info]
-    if info.type == "color" then
-        local color = Database.db.profile.commands[commandId][property]
-        return unpack(color ~= nil and color or {})
-    else
-        return Database.db.profile.commands[commandId][property]
-    end
+    return Database.db.profile.commands[commandId][property]
 end
 
-function setCommand(info, value, ...)
+function setValue(info, value, ...)
     local commandId = info[#info - 1]
     local property = info[#info]
-    if info.type == "color" then
-        Database.db.profile.commands[commandId][property] = { value, ... }
-    else
-        Database.db.profile.commands[commandId][property] = value
-    end
+    Database.db.profile.commands[commandId][property] = value
     Database:FireDataChanged("SetProperty", property)
 end
 
-function getCommand_parentId(info)
-    return getCommand(info) or nilCommandId
+function getColor(info)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    local color = Database.db.profile.commands[commandId][property]
+    return unpack(color ~= nil and color or {})
 end
 
-function setCommand_parentId(info, value, ...)
+function setColor(info, value, ...)
     local commandId = info[#info - 1]
-    setCommand(info, value ~= nilCommandId and value or nil, ...)
+    local property = info[#info]
+    Database.db.profile.commands[commandId][property] = { value, ... }
+    Database:FireDataChanged("SetProperty", property)
+end
+
+function getNumber(info)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    local value = Database.db.profile.commands[commandId][property]
+    return value and tostring(value) or "0"
+end
+
+function setNumber(info, value, ...)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    Database.db.profile.commands[commandId][property] = tonumber(value)
+    Database:FireDataChanged("SetProperty", property)
+end
+
+function validateNumber(info, value)
+    return tonumber(value) or "Not a number!"
+end
+
+function getParentId(info)
+    return getValue(info) or nilCommandId
+end
+
+function setParentId(info, value, ...)
+    local commandId = info[#info - 1]
+    setValue(info, value ~= nilCommandId and value or nil, ...)
     selectCommand(commandId)
 end
 
-local function traverseComandTree_parentId(node, excludeCommandId, result, func)
+local function traverseParents(node, excludeCommandId, result, func)
     if node.command.id == excludeCommandId then
         return
     end
     func(node, result)
     for _, childNode in pairs(node.children) do
-        traverseComandTree_parentId(childNode, excludeCommandId, result, func)
+        traverseParents(childNode, excludeCommandId, result, func)
     end
 end
 
-local function traverseComandTree_parentId_values(node, result)
+local function traverseParentsValues(node, result)
     result[node.command.id] = ("   "):rep(#node.path) .. node.command.name
 end
 
-function valuesCommand_parentId(info)
+function getParentValues(info)
     local commandId = info[#info - 1]
 
     local values = { [nilCommandId] = "|cff999999<No Parent>" }
     for _, node in pairs(Database.commandTree.rootNodes) do
-        traverseComandTree_parentId(node, commandId, values, traverseComandTree_parentId_values)
+        traverseParents(node, commandId, values, traverseParentsValues)
     end
 
     return values
 end
 
-local function traverseComandTree_parentId_sorting(node, result)
+local function traverseParentsSorting(node, result)
     table.insert(result, node.command.id)
 end
 
-function sortingCommand_parentId(info)
+function parentValuesSorting(info)
     local commandId = info[#info - 1]
 
     local sorting = { nilCommandId }
     for _, node in pairs(Database.commandTree.rootNodes) do
-        traverseComandTree_parentId(node, commandId, sorting, traverseComandTree_parentId_sorting)
+        traverseParents(node, commandId, sorting, traverseParentsSorting)
     end
 
     return sorting
