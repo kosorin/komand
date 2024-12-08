@@ -1,95 +1,92 @@
-local _, Core = ...
+---@type string, Komand
+local KOMAND, K = ...
 
---> Locals
-local App = Core.App
-local Console = Core.Console
-local Command = Core.Command
-local Database = Core.Database
-local Options = Core.Options
-local Menu = Core.Menu
-local Utils = Core.Utils
+---@class Komand.Menu
+---@field frame W.Frame
+K.Menu = {}
 
--------------------------------------------------------------------------------
--- Menu
--------------------------------------------------------------------------------
+---@param _ unknown
+---@param command Komand.DB.Command
+local function executeCommand(_, command)
+    K.Menu:Hide()
+    K.Command.Execute(command)
+end
 
---> Forward declarations
+---@param node Komand.CommandNode
+---@param isHeader boolean
+---@return W.DropDownMenuButtonInfo
+local function createButton(node, isHeader)
+    local info = {}
 
-local createMenuFrame
+    local command = node.command
+    info.func = executeCommand
+    info.arg1 = command
+    info.value = command.id
 
---> Functions
+    info.notCheckable = true
+    info.isTitle = false
+    info.hasArrow = not isHeader and getn(node.children) > 0
+    info.colorCode = K.Utils.ColorCode(command.color)
+    info.text = command.name
+    info.tooltipTitle = command.name
+    info.tooltipText = command.value
 
-function Menu:Show(commandName)
-    local command = Utils.FindByName(Database.db.profile.commands, commandName)
+    return info
+end
+
+---@param _ unknown
+---@param level integer
+local function initializeMenu(_, level)
+    if not level then
+        return
+    end
+
+    local tree = K.Database.commandTree
+
+    local parentNode = UIDROPDOWNMENU_MENU_VALUE and tree.nodes[UIDROPDOWNMENU_MENU_VALUE]
+    if level == 1 and parentNode then
+        UIDropDownMenu_AddButton(createButton(parentNode, true), level)
+    end
+
+    local nodes = parentNode and parentNode.children or tree.rootNodes
+    for _, node in pairs(nodes) do
+        if node.command.enabled then
+            UIDropDownMenu_AddButton(createButton(node, false), level)
+        end
+    end
+end
+
+---@return W.Frame
+local function createFrame()
+    local frame = CreateFrame("Frame", K.App.name .. "Menu", UIParent, "UIDropDownMenuTemplate")
+    frame.displayMode = "MENU"
+    frame.initialize = initializeMenu
+    return frame
+end
+
+function K.Menu:Initialize()
+    K.Database.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
+end
+
+---@param query string?
+function K.Menu:Show(query)
+    local command = K.Database:FindCommand(query)
     local commandId = command and command.id or nil
 
     if not self.frame then
-        self.frame = createMenuFrame()
+        self.frame = createFrame()
     end
+
     ToggleDropDownMenu(1, commandId, self.frame, "cursor", 0, 0)
 end
 
-function Menu:Hide()
+function K.Menu:Hide()
     if UIDROPDOWNMENU_OPEN_MENU == self.frame then
         CloseDropDownMenus()
     end
 end
 
---> Local functions
-
-local function executeCommand(_, commandValue)
-    Command.Execute(commandValue)
-end
-
-local function createMenuButton(node, isMain)
-    local info = {}
-
-    local command = node.command
-
-    info.notCheckable = true
-    info.isTitle = false
-    info.hasArrow = not isMain and getn(node.children) > 0
-
-    info.value = command.id
-    info.text = command.name
-
-    info.colorCode = Utils.ToColorCode(command.color)
-
-    info.tooltipTitle = command.name
-    info.tooltipText = command.value
-
-    info.func = executeCommand
-    info.arg1 = command.value
-
-    return info
-end
-
-function createMenuFrame()
-    local frame = CreateFrame("Frame", nil, nil, "UIDropDownMenuTemplate")
-    frame.displayMode = "MENU"
-    frame.initialize = function(_, level)
-        if not level then
-            return
-        end
-
-        local nodes
-        local node = UIDROPDOWNMENU_MENU_VALUE and Database.commandTree.nodes[UIDROPDOWNMENU_MENU_VALUE]
-        if node then
-            nodes = node.children
-        else
-            nodes = Database.commandTree.rootNodes
-        end
-
-        -- TODO: Maybe add settings for this
-        if level == 1 and node then
-            UIDropDownMenu_AddButton(createMenuButton(node, true), level)
-        end
-
-        for _, node in pairs(nodes) do
-            if node.command.enabled then
-                UIDropDownMenu_AddButton(createMenuButton(node, false), level)
-            end
-        end
-    end
-    return frame
+---@param ... any
+function K.Menu:OnDataChanged(...)
+    self:Hide()
 end

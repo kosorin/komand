@@ -1,189 +1,221 @@
-local _, Core = ...
+local unpack = unpack ---@diagnostic disable-line: deprecated
 
---> Libraries
 local AceDB = LibStub("AceDB-3.0")
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 
---> Locals
-local App = Core.App
-local Console = Core.Console
-local Command = Core.Command
-local Database = Core.Database
-local Options = Core.Options
-local Menu = Core.Menu
-local Utils = Core.Utils
+---@type string, Komand
+local KOMAND, K = ...
 
--------------------------------------------------------------------------------
---> Database
--------------------------------------------------------------------------------
+---@alias Komand.CommandType "command" | "separator"
 
---> Forward declarations
+---@class Komand.CommandNode
+---@field command Komand.DB.Command
+---@field path Komand.DB.Id[]
+---@field children Komand.CommandNode[]
 
-local addCommand, removeCommand, buildCommandTree
+---@class Komand.CommandTree
+---@field rootNodes Komand.CommandNode[]
+---@field nodes table<Komand.DB.Id, Komand.CommandNode>
 
---> Static variables
+---@alias Komand.DB.Id string
 
-Database.idPrefix = "ID-"
+---@class Komand.DB.Command
+---@field id Komand.DB.Id
+---@field parentId Komand.DB.Id?
+---@field type Komand.CommandType
+---@field enabled boolean
+---@field name string
+---@field color color
+---@field order integer
+---@field value string
 
---> Static functions
+---@class Komand.DB.Profile
+---@field commands table<Komand.DB.Id, Komand.DB.Command>
 
-function Database.CommandComparer(a, b)
-    local aa, bb
+---@class Komand.DB
+---@field profile Komand.DB.Profile
+---@field [any] unknown
 
-    bb = (a ~= nil and a.order or 0)
-    aa = (b ~= nil and b.order or 0)
-    if aa ~= bb then
-        return aa > bb
+---@class Komand.Database
+---@field db Komand.DB
+---@field commandTree Komand.CommandTree
+K.Database = {}
+
+---@param commands table<Komand.DB.Id, Komand.DB.Command>
+---@return Komand.CommandTree
+local function buildCommandTree(commands)
+    ---@type Komand.DB.Command[]
+    local sortedCommands = {}
+    for _, command in pairs(commands) do
+        table.insert(sortedCommands, command)
+    end
+    table.sort(sortedCommands, K.Command.Comparer)
+
+    ---@type Komand.CommandTree
+    local tree = {
+        rootNodes = {},
+        nodes = {},
+    }
+
+    for _, command in ipairs(sortedCommands) do
+        tree.nodes[command.id] = {
+            command = command,
+            path = {},
+            children = {},
+        }
     end
 
-    aa = a.name:upper()
-    bb = b.name:upper()
-    if aa ~= bb then
-        return aa < bb
+    for _, command in ipairs(sortedCommands) do
+        local node = tree.nodes[command.id]
+        local parentNode = tree.nodes[command.parentId]
+
+        local nodeContainer = parentNode and parentNode.children or tree.rootNodes
+        table.insert(nodeContainer, node)
+
+        local path = { unpack(parentNode and parentNode.path or {}) }
+        table.insert(path, node.command.id)
+        node.path = path
     end
 
-    return aa < bb
+    return tree
 end
 
-function Database.GenerateId(items)
-    local random = math.random
-    local template = Database.idPrefix .. "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-    local function randomChar(c)
-        local v = (c == "x") and random(0, 0xf) or random(8, 0xb)
-        return ("%x"):format(v)
-    end
+local idAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+local idAlphabetLength = string.len(idAlphabet)
 
+---@param items { [Komand.DB.Id]: { id: Komand.DB.Id } }
+---@return Komand.DB.Id
+local function generateId(items)
     local id
+    local bytes = {}
     repeat
-        id = template:gsub("[xy]", randomChar)
+        for i = 1, 5 do
+            bytes[i] = string.byte(idAlphabet, math.random(idAlphabetLength))
+        end
+        id = "id-" .. string.char(unpack(bytes))
     until items == nil or items[id] == nil or items[id].id == nil
-
     return id
 end
 
---> Functions
+---@param commands table<Komand.DB.Id, Komand.DB.Command>
+---@param parentId Komand.DB.Id
+---@return Komand.DB.Command
+local function addCommand(commands, parentId)
+    local id = generateId(commands)
+    local command = commands[id]
+    command.id = id
+    command.parentId = parentId
+    command.name = "*New Command"
+    return command
+end
 
-function Database:Initialize()
-    self.db = AceDB:New(Core.name .. "DB", {
+---@param commands table<Komand.DB.Id, Komand.DB.Command>
+---@param id Komand.DB.Id
+---@return Komand.DB.Command
+local function removeCommand(commands, id)
+    local command = commands[id]
+    for _, childCommand in pairs(commands) do
+        if childCommand.parentId == id then
+            removeCommand(commands, childCommand.id)
+        end
+    end
+    commands[id] = nil
+    return command
+end
+
+function K.Database:Initialize()
+    ---@type Komand.DB
+    local defaults = {
         profile = {
             commands = {
                 ["**"] = {
-                    id = nil,
+                    id = nil, ---@diagnostic disable-line: assign-type-mismatch
                     parentId = nil,
                     enabled = true,
-                    name = "*New Command",
-                    color = { 1, 1, 1, 1 },
+                    type = "command",
+                    name = "",
+                    color = K.Utils.Color(255, 255, 255),
                     order = 0,
                     value = "",
                 },
             },
         },
-    }, true)
+    }
+
+    self.db = AceDB:New(K.App.name .. "DB", defaults, true)
+    self.db.RegisterCallback(self, "OnNewProfile", "OnNewProfile")
     self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
     self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileCopied")
     self.db.RegisterCallback(self, "OnProfileReset", "OnProfileReset")
     self.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
 end
 
-function Database:AddCommand(parentId)
-    local command = addCommand(parentId)
+---@param parentId Komand.DB.Id
+---@return Komand.DB.Command
+function K.Database:AddCommand(parentId)
+    local command = addCommand(self.db.profile.commands, parentId)
     self:FireDataChanged("AddCommand")
     return command
 end
 
-function Database:RemoveCommand(id)
-    local command = removeCommand(id)
+---@param id Komand.DB.Id
+---@return Komand.DB.Command
+function K.Database:RemoveCommand(id)
+    local command = removeCommand(self.db.profile.commands, id)
     self:FireDataChanged("RemoveCommand")
     return command
 end
 
-function Database:OnProfileChanged(_, _, profileName)
-    self:FireDataChanged("ProfileChanged", profileName)
-    AceConfigRegistry:NotifyChange(Core.name)
+---@param query string?
+---@return Komand.DB.Command?
+function K.Database:FindCommand(query)
+    if not query or query:match("^%s*$") then
+        return nil
+    end
+
+    ---@param s string
+    ---@return string
+    local function normalize(s)
+        return s:gsub("%s+", ""):upper()
+    end
+
+    query = normalize(query)
+
+    for _, command in pairs(self.db.profile.commands) do
+        if normalize(command.name) == query then
+            return command
+        end
+    end
+
+    return nil
 end
 
-function Database:OnProfileCopied(_, _, profileName)
-    self:FireDataChanged("ProfileCopied", profileName)
-    AceConfigRegistry:NotifyChange(Core.name)
-end
-
-function Database:OnProfileReset(_, _)
-    self:FireDataChanged("ProfileReset")
-    AceConfigRegistry:NotifyChange(Core.name)
-end
-
-function Database:OnDataChanged(...)
-    Menu:Hide()
-    self.commandTree = buildCommandTree()
-end
-
-function Database:FireDataChanged(...)
+---@param ... any
+function K.Database:FireDataChanged(...)
     self.db.callbacks:Fire("DataChanged", ...)
 end
 
---> Local functions
-
-function addCommand(parentId)
-    local profile = Database.db.profile
-
-    local id = Database.GenerateId(profile.commands)
-    local command = profile.commands[id]
-    command.id = id
-    command.parentId = parentId
-    return command
+function K.Database:OnNewProfile(_, _, profileName)
+    self:FireDataChanged("NewProfile", profileName)
+    AceConfigRegistry:NotifyChange(K.App.name)
 end
 
-function removeCommand(id)
-    local profile = Database.db.profile
-
-    local removedCommand = profile.commands[id]
-    for _, command in pairs(profile.commands) do
-        if (command.parentId == id) then
-            removeCommand(command.id, true)
-        end
-    end
-    profile.commands[id] = nil
-    return removedCommand
+function K.Database:OnProfileChanged(_, _, profileName)
+    self:FireDataChanged("ProfileChanged", profileName)
+    AceConfigRegistry:NotifyChange(K.App.name)
 end
 
-function buildCommandTree()
-    local nodes = Utils.Select(Database.db.profile.commands, function(_, command)
-        return {
-            command = command,
-            path = nil,
-            children = {},
-        }
-    end)
-    local sortedNodes = Utils.Sort(nodes, function(a, b)
-        return Database.CommandComparer(a.command, b.command)
-    end)
+function K.Database:OnProfileCopied(_, _, profileName)
+    self:FireDataChanged("ProfileCopied", profileName)
+    AceConfigRegistry:NotifyChange(K.App.name)
+end
 
-    local rootNodes = {}
+function K.Database:OnProfileReset()
+    self:FireDataChanged("ProfileReset")
+    AceConfigRegistry:NotifyChange(K.App.name)
+end
 
-    for _, node in pairs(sortedNodes) do
-        local parentNode = node.command.parentId and nodes[node.command.parentId]
-        if parentNode then
-            table.insert(parentNode.children, node)
-        else
-            table.insert(rootNodes, node)
-        end
-    end
-
-    local function setCommandNodePath(node, parentPath)
-        local path = { unpack(parentPath) }
-        table.insert(path, node.command.id)
-
-        node.path = path
-        for _, childNode in pairs(node.children) do
-            setCommandNodePath(childNode, path)
-        end
-    end
-    for _, node in pairs(rootNodes) do
-        setCommandNodePath(node, {})
-    end
-
-    return {
-        rootNodes = rootNodes,
-        nodes = nodes,
-    }
+---@param ... any
+function K.Database:OnDataChanged(...)
+    self.commandTree = buildCommandTree(self.db.profile.commands)
 end

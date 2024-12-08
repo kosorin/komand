@@ -1,95 +1,34 @@
-local _, Core = ...
+---@type string, Komand
+local KOMAND, K = ...
 
---> Locals
-local App = Core.App
-local Console = Core.Console
-local Command = Core.Command
-local Database = Core.Database
-local Options = Core.Options
-local Menu = Core.Menu
-local Utils = Core.Utils
+---@class Komand.Utils
+K.Utils = {}
 
--------------------------------------------------------------------------------
--- Utils
--------------------------------------------------------------------------------
+---@alias color number[] RGBA
 
---> Static functions
-
-function Utils.Sort(items, comparer)
-    local result = {}
-    local copy = Utils.ToList(items)
-    table.sort(copy, comparer)
-    for _, item in ipairs(copy) do
-        table.insert(result, item)
-    end
-    return result
+---@param r number
+---@param g number
+---@param b number
+---@param a number?
+---@return color
+function K.Utils.Color(r, g, b, a)
+    return { r / 255, g / 255, b / 255, (a or 255) / 255 }
 end
 
-function Utils.Find(items, predicate)
-    for key, item in pairs(items or {}) do
-        if predicate(key, item) then
-            return item
-        end
-    end
-    return nil
-end
-
-function Utils.FindByName(items, name)
-    if (name or ""):match("^%s*$") then
-        return nil
-    end
-    return Utils.Find(items, function(_, item)
-        return item.name:upper() == name:upper()
-    end) or Utils.Find(items, function(_, item)
-        local function normalize(name)
-            return name:gsub("%s+", ""):upper()
-        end
-        local findName = normalize(name)
-        local itemName = normalize(item.name)
-        return itemName:match(findName)
-    end)
-end
-
-function Utils.Where(items, filter, removeKeys)
-    local result = {}
-    for key, item in pairs(items or {}) do
-        if filter(key, item) then
-            if removeKeys then
-                table.insert(result, item)
-            else
-                result[key] = item
-            end
-        end
-    end
-    return result
-end
-
-function Utils.Select(items, selector, removeKeys)
-    local result = {}
-    for key, item in pairs(items or {}) do
-        local value = selector(key, item)
-        if removeKeys then
-            table.insert(result, value)
-        else
-            result[key] = value
-        end
-    end
-    return result
-end
-
-function Utils.ToList(items)
-    local result = {}
-    for _, item in pairs(items) do
-        table.insert(result, item)
-    end
-    return result
-end
-
----@param color table RGB[A] (range 0..1)
-function Utils.ToColorCode(color)
+---@param color color
+---@return string
+function K.Utils.ColorCode(color)
     local max = 255
-    local values = Utils.Select(color, function(_, x)
-        return x * max
-    end)
-    return ("|c%02x%02x%02x%02x"):format(values[4] or max, unpack(values, 1, 3))
+
+    local r = color and color[1] or 1
+    local g = color and color[2] or 1
+    local b = color and color[3] or 1
+    local a = color and color[4] or 1
+
+    r = r * 255
+    g = g * 255
+    b = b * 255
+    a = a * 255
+
+    return ("|c%02x%02x%02x%02x"):format(a, r, g, b)
 end

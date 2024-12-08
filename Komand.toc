@@ -1,25 +1,26 @@
-## Interface: 11304
-## Version: 1.13.04.2
-
+## Interface: 11505
 ## Title: Komand
-## Notes: Komand addon
+## Notes: Context menu for custom comands.
 ## Author: Posix
-
+## Version: 2
 ## SavedVariables: KomandDB
 
-Libs\LibStub\LibStub.lua
-Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
-Libs\AceAddon-3.0\AceAddon-3.0.xml
-Libs\AceEvent-3.0\AceEvent-3.0.xml
-Libs\AceDB-3.0\AceDB-3.0.xml
-Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
-Libs\AceConsole-3.0\AceConsole-3.0.xml
-Libs\AceGUI-3.0\AceGUI-3.0.xml
-Libs\AceConfig-3.0\AceConfig-3.0.xml
+# Libs\LibStub\LibStub.lua
+# Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+# Libs\AceAddon-3.0\AceAddon-3.0.xml
+# Libs\AceEvent-3.0\AceEvent-3.0.xml
+# Libs\AceDB-3.0\AceDB-3.0.xml
+# Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+# Libs\AceConsole-3.0\AceConsole-3.0.xml
+# Libs\AceGUI-3.0\AceGUI-3.0.xml
+# Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 Core.lua
 
-Utils.lua
+App.lua
+Command.lua
+Console.lua
+Database.lua
 Menu.lua
 Options.lua
-Database.lua
+Utils.lua
