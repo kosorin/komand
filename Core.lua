@@ -2,11 +2,12 @@
 local KOMAND, K = ...
 
 ---@class Komand
----@field App Komand.App
 ---@field Console Komand.Console
----@field Command Komand.Command
+---@field Utils Komand.Utils
+---@field App Komand.App
 ---@field Database Komand.Database
+---@field Broker Komand.Broker
+---@field Command Komand.Command
 ---@field Options Komand.Options
 ---@field Menu Komand.Menu
----@field Utils Komand.Utils
 _G.Komand = K

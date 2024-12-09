@@ -1,5 +1,11 @@
 ---@meta
 
+---@class W.Library
+---@field [any] unknown
+
+---@class W.DataBrokerObject
+---@field [any] unknown
+
 ---@class W.Frame
 ---@field [any] unknown
 

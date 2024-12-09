@@ -29,8 +29,12 @@ local KOMAND, K = ...
 ---@field order integer
 ---@field value string
 
+---@class Komand.DB.Minimap
+---@field hide boolean
+
 ---@class Komand.DB.Profile
 ---@field commands table<Komand.DB.Id, Komand.DB.Command>
+---@field minimap Komand.DB.Minimap
 
 ---@class Komand.DB
 ---@field profile Komand.DB.Profile
@@ -138,6 +142,9 @@ function K.Database:Initialize()
                     order = 0,
                     value = "",
                 },
+            },
+            minimap = {
+                hide = false,
             },
         },
     }
