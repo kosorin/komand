@@ -36,7 +36,7 @@ local nilCommandId = ""
 function K.Options:Initialize()
     self:Build()
 
-    AceConfig:RegisterOptionsTable(K.Addon.name, function() return self:Build() end, { "komand", "kmd" })
+    AceConfig:RegisterOptionsTable(K.Addon.name, function() return self:Build() end, K.slash)
 
     AceConfigDialog:SetDefaultSize(K.Addon.name, 600, 600)
 

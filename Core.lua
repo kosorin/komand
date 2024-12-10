@@ -2,6 +2,7 @@
 local KOMAND, K = ...
 
 ---@class Komand
+---@field slash string[]
 ---@field Console Komand.Console
 ---@field Utils Komand.Utils
 ---@field Addon Komand.Addon
@@ -11,3 +12,5 @@ local KOMAND, K = ...
 ---@field Options Komand.Options
 ---@field Menu Komand.Menu
 _G.Komand = K
+
+K.slash = { "komand", "kmd" }
