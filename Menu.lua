@@ -58,7 +58,7 @@ end
 
 ---@return W.Frame
 local function createFrame()
-    local frame = CreateFrame("Frame", K.App.name .. "Menu", UIParent, "UIDropDownMenuTemplate")
+    local frame = CreateFrame("Frame", K.Addon.name .. "Menu", UIParent, "UIDropDownMenuTemplate")
     frame.displayMode = "MENU"
     frame.initialize = initializeMenu
     return frame

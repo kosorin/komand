@@ -19,7 +19,7 @@ Core.lua
 
 Console.lua
 Utils.lua
-App.lua
+Addon.lua
 Database.lua
 Broker.lua
 Command.lua

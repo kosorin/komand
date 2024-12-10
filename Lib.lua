@@ -1,6 +1,6 @@
 ---@meta
 
----@class W.Library
+---@class W.Addon
 ---@field [any] unknown
 
 ---@class W.DataBrokerObject

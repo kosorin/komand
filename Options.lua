@@ -36,14 +36,14 @@ local nilCommandId = ""
 function K.Options:Initialize()
     self:Build()
 
-    AceConfig:RegisterOptionsTable(K.App.name, function() return self:Build() end, { "komand", "kmd" })
+    AceConfig:RegisterOptionsTable(K.Addon.name, function() return self:Build() end, { "komand", "kmd" })
 
-    AceConfigDialog:SetDefaultSize(K.App.name, 600, 600)
+    AceConfigDialog:SetDefaultSize(K.Addon.name, 600, 600)
 
     self.frames = {
-        commands = AceConfigDialog:AddToBlizOptions(K.App.name, nil, nil, "commands"),
-        general = AceConfigDialog:AddToBlizOptions(K.App.name, self.options.args.general.name, K.App.name, "general"),
-        profiles = AceConfigDialog:AddToBlizOptions(K.App.name, self.options.args.profiles.name, K.App.name, "profiles"),
+        commands = AceConfigDialog:AddToBlizOptions(K.Addon.name, nil, nil, "commands"),
+        general = AceConfigDialog:AddToBlizOptions(K.Addon.name, self.options.args.general.name, K.Addon.name, "general"),
+        profiles = AceConfigDialog:AddToBlizOptions(K.Addon.name, self.options.args.profiles.name, K.Addon.name, "profiles"),
     }
 end
 
@@ -79,8 +79,8 @@ function K.Options:BuildOptions()
         guiHidden = true,
         type = "input",
         set = function(info, value)
-            AceConfigDialog:Open(K.App.name)
-            --Settings.OpenToCategory(K.App.name)
+            AceConfigDialog:Open(K.Addon.name)
+            --Settings.OpenToCategory(K.Addon.name)
         end
     }
 
@@ -283,7 +283,7 @@ end
 
 function selectCommand(commandId)
     local node = commandId and K.Database.commandTree.nodes[commandId]
-    AceConfigDialog:SelectGroup(K.App.name, "commands", unpack(node and node.path or {}))
+    AceConfigDialog:SelectGroup(K.Addon.name, "commands", unpack(node and node.path or {}))
 end
 
 function getValue(info)

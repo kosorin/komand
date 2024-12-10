@@ -149,7 +149,7 @@ function K.Database:Initialize()
         },
     }
 
-    self.db = AceDB:New(K.App.name .. "DB", defaults, true)
+    self.db = AceDB:New(K.Addon.name .. "DB", defaults, true)
     self.db.RegisterCallback(self, "OnNewProfile", "OnNewProfile")
     self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
     self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileCopied")
@@ -204,22 +204,22 @@ end
 
 function K.Database:OnNewProfile(_, _, profileName)
     self:FireDataChanged("NewProfile", profileName)
-    AceConfigRegistry:NotifyChange(K.App.name)
+    AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
 function K.Database:OnProfileChanged(_, _, profileName)
     self:FireDataChanged("ProfileChanged", profileName)
-    AceConfigRegistry:NotifyChange(K.App.name)
+    AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
 function K.Database:OnProfileCopied(_, _, profileName)
     self:FireDataChanged("ProfileCopied", profileName)
-    AceConfigRegistry:NotifyChange(K.App.name)
+    AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
 function K.Database:OnProfileReset()
     self:FireDataChanged("ProfileReset")
-    AceConfigRegistry:NotifyChange(K.App.name)
+    AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
 ---@param ... any

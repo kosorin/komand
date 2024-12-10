@@ -7,9 +7,9 @@ local KOMAND, K = ...
 K.Console = {}
 
 function K.Console.Print(...)
-    AceConsole.Print(K.App.name, ...)
+    AceConsole.Print(K.Addon.name, ...)
 end
 
 function K.Console.Debug(...)
-    AceConsole.Print(K.App.name, K.Utils.ColorCode(K.Utils.Color(160, 160, 160)), ...)
+    AceConsole.Print(K.Addon.name, K.Utils.ColorCode(K.Utils.Color(160, 160, 160)), ...)
 end
