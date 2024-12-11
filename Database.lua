@@ -8,14 +8,15 @@ local KOMAND, K = ...
 
 ---@alias Komand.CommandType "command" | "separator"
 
----@class Komand.CommandNode
+---@class Komand.Node
 ---@field command Komand.DB.Command
+---@field parent Komand.Node?
+---@field children Komand.Node[]
 ---@field path Komand.DB.Id[]
----@field children Komand.CommandNode[]
 
----@class Komand.CommandTree
----@field rootNodes Komand.CommandNode[]
----@field nodes table<Komand.DB.Id, Komand.CommandNode>
+---@class Komand.Tree
+---@field rootNodes Komand.Node[]
+---@field nodes table<Komand.DB.Id, Komand.Node>
 
 ---@alias Komand.DB.Id string
 
@@ -42,43 +43,84 @@ local KOMAND, K = ...
 
 ---@class Komand.Database
 ---@field db Komand.DB
----@field commandTree Komand.CommandTree
+---@field commandTree Komand.Tree
 K.Database = {}
 
 ---@param commands table<Komand.DB.Id, Komand.DB.Command>
----@return Komand.CommandTree
+---@return Komand.Tree
 local function buildCommandTree(commands)
-    ---@type Komand.DB.Command[]
-    local sortedCommands = {}
-    for _, command in pairs(commands) do
-        table.insert(sortedCommands, command)
-    end
-    table.sort(sortedCommands, K.Command.Comparer)
-
-    ---@type Komand.CommandTree
+    ---@type Komand.Tree
     local tree = {
         rootNodes = {},
         nodes = {},
     }
 
-    for _, command in ipairs(sortedCommands) do
-        tree.nodes[command.id] = {
+    ---@type Komand.Node[]
+    local sortedNodes = {}
+
+    -- Create nodes
+    for _, command in pairs(commands) do
+        local node = {
             command = command,
             path = {},
+            parent = nil,
             children = {},
         }
+        tree.nodes[command.id] = node
+        table.insert(sortedNodes, node)
     end
 
-    for _, command in ipairs(sortedCommands) do
-        local node = tree.nodes[command.id]
-        local parentNode = tree.nodes[command.parentId]
+    table.sort(sortedNodes, function(a, b)
+        local aa, bb
 
-        local nodeContainer = parentNode and parentNode.children or tree.rootNodes
-        table.insert(nodeContainer, node)
+        aa = a.command.order or 0
+        bb = b.command.order or 0
+        if aa ~= bb then
+            return aa < bb
+        end
 
-        local path = { unpack(parentNode and parentNode.path or {}) }
-        table.insert(path, node.command.id)
-        node.path = path
+        aa = a.command.name:upper()
+        bb = b.command.name:upper()
+        if aa ~= bb then
+            return aa < bb
+        end
+
+        return aa < bb
+    end)
+
+    -- Set parent and children
+    for _, node in ipairs(sortedNodes) do
+        ---@type Komand.Node?
+        local parentNode = tree.nodes[node.command.parentId]
+
+        node.parent = parentNode
+
+        if parentNode then
+            table.insert(parentNode.children, node)
+        else
+            table.insert(tree.rootNodes, node)
+        end
+    end
+
+    -- Build paths
+    ---@type Komand.Node[]
+    local nodes = { unpack(tree.rootNodes) }
+    local i = 1
+    while i <= #nodes do
+        local node = nodes[i]
+
+        if node.parent then
+            for _, p in ipairs(node.parent.path) do
+                table.insert(node.path, p)
+            end
+        end
+        table.insert(node.path, node.command.id)
+
+        for _, childNode in ipairs(node.children) do
+            table.insert(nodes, childNode)
+        end
+
+        i = i + 1
     end
 
     return tree

@@ -12,7 +12,7 @@ local function executeCommand(_, command)
     K.Command.Execute(command)
 end
 
----@param node Komand.CommandNode
+---@param node Komand.Node
 ---@param isHeader boolean
 ---@return W.DropDownMenuButtonInfo
 local function createButton(node, isHeader)

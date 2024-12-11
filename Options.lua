@@ -60,34 +60,30 @@ function K.Options:BuildOptions()
     self.options = {
         type = "group",
         childGroups = "tab",
-        args = {},
+        args = {
+            show = {
+                name = "Show",
+                order = 0,
+                guiHidden = true,
+                type = "input",
+                set = function(info, value)
+                    K.Menu:Show(value)
+                end
+            },
+            options = {
+                name = "Options",
+                order = 1,
+                guiHidden = true,
+                type = "input",
+                set = function(info, value)
+                    AceConfigDialog:Open(K.Addon.name)
+                end
+            },
+            commands = self:BuildCommandsOptions(100),
+            general = self:BuildGeneralOptions(200),
+            profiles = self:BuildProfilesOptions(300),
+        },
     }
-
-    -- Command line
-    self.options.args.show = {
-        name = "Show",
-        order = 0,
-        guiHidden = true,
-        type = "input",
-        set = function(info, value)
-            K.Menu:Show(value)
-        end
-    }
-    self.options.args.options = {
-        name = "Options",
-        order = 1,
-        guiHidden = true,
-        type = "input",
-        set = function(info, value)
-            AceConfigDialog:Open(K.Addon.name)
-            --Settings.OpenToCategory(K.Addon.name)
-        end
-    }
-
-    -- GUI
-    self.options.args.commands = self:BuildCommandsOptions(100)
-    self.options.args.general = self:BuildGeneralOptions(200)
-    self.options.args.profiles = self:BuildProfilesOptions(300)
 end
 
 function K.Options:BuildCommandsOptions(order)
@@ -144,7 +140,6 @@ function K.Options:BuildCommand(node, order)
         name = command.name,
         order = order,
         type = "group",
-        childGroups = "tree",
         args = {
             selector = {
                 name = "You can't see this",
@@ -262,22 +257,25 @@ function K.Options:OnAddCommand(info)
 end
 
 function K.Options:OnRemoveCommand(info)
-    local commandId = info.arg.command.id
-    local command = K.Database:RemoveCommand(commandId)
+    ---@type Komand.Node
+    local node = info.arg
+    local command = node.command
+    K.Database:RemoveCommand(command.id)
     selectCommand(command.parentId)
 end
 
 function K.Options:OnExecuteCommand(info)
-    local commandId = info.arg.command.id
-    local command = K.Database.db.profile.commands[commandId]
+    ---@type Komand.Node
+    local node = info.arg
+    local command = node.command
     K.Command.Execute(command)
 end
 
 function K.Options:OnCommandNodeChanged(info)
-    local command = info.arg.command
-
+    ---@type Komand.Node
+    local node = info.arg
+    local command = node.command
     self.lastCommandId = command.id
-
     return true
 end
 
@@ -351,6 +349,8 @@ local function traverseParents(node, excludeCommandId, result, func)
     end
 end
 
+---@param node Komand.Node
+---@param result any
 local function traverseParentsValues(node, result)
     result[node.command.id] = ("   "):rep(#node.path) .. node.command.name
 end
