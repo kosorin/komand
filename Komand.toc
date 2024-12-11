@@ -17,7 +17,6 @@
 
 Core.lua
 
-Console.lua
 Utils.lua
 Addon.lua
 Database.lua

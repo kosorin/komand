@@ -3,7 +3,6 @@ local KOMAND, K = ...
 
 ---@class Komand
 ---@field slash string[]
----@field Console Komand.Console
 ---@field Utils Komand.Utils
 ---@field Addon Komand.Addon
 ---@field Database Komand.Database
