@@ -180,7 +180,7 @@ function K.Database:Initialize()
                     enabled = true,
                     type = "command",
                     name = "",
-                    color = K.Utils.Color(255, 255, 255),
+                    color = { 1, 1, 1 },
                     order = 0,
                     value = "",
                 },
