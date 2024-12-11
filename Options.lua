@@ -2,14 +2,19 @@ local unpack = unpack ---@diagnostic disable-line: deprecated
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceDBOptions = LibStub("AceDBOptions-3.0")
 
 ---@type string, Komand
 local KOMAND, K = ...
 
+---@alias AceConfig.Options table
+
+---@class AceConfig.HandlerInfo
+---@field arg any
+---@field [integer] string
+
 ---@class Komand.Options
----@field options table
+---@field options AceConfig.Options
 ---@field frames table
 K.Options = {}
 
@@ -22,42 +27,311 @@ local function spaceDivider(order)
     }
 end
 
-local selectCommand
-local getValue, setValue
-local getColor, setColor
-local getNumber, setNumber, validateNumber
-local getParentId, setParentId, getParentValues, parentValuesSorting
+local tabKeys = {
+    commands = "commands",
+    general = "general",
+    profiles = "profiles",
+}
 
-local commandOrderOffset = 100
-local nilCommandId = ""
+---@type Komand.DB.Id
+local noParentId = ""
 
---> Functions
+---@param commandId Komand.DB.Id?
+local function selectCommandGroup(commandId)
+    local node = commandId and K.Database.commandTree.nodes[commandId]
+    local path = node and node.path or {}
+    AceConfigDialog:SelectGroup(K.Addon.name, tabKeys.commands, unpack(path))
+end
 
-function K.Options:Initialize()
-    self:Build()
+---@param info AceConfig.HandlerInfo
+---@return any
+local function getValue(info)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    return K.Database.db.profile.commands[commandId][property]
+end
 
-    AceConfig:RegisterOptionsTable(K.Addon.name, function() return self:Build() end, K.slash)
+---@param info AceConfig.HandlerInfo
+---@param value any
+local function setValue(info, value)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    K.Database.db.profile.commands[commandId][property] = value
+    K.Database:FireDataChanged("SetProperty", property)
+end
 
-    AceConfigDialog:SetDefaultSize(K.Addon.name, 600, 600)
+---@param info AceConfig.HandlerInfo
+---@return number r,number g, number b, number a
+local function getColor(info)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    local color = K.Database.db.profile.commands[commandId][property]
+    ---@diagnostic disable-next-line: redundant-return-value
+    return unpack(color ~= nil and color or {})
+end
 
-    self.frames = {
-        commands = AceConfigDialog:AddToBlizOptions(K.Addon.name, nil, nil, "commands"),
-        general = AceConfigDialog:AddToBlizOptions(K.Addon.name, self.options.args.general.name, K.Addon.name, "general"),
-        profiles = AceConfigDialog:AddToBlizOptions(K.Addon.name, self.options.args.profiles.name, K.Addon.name, "profiles"),
+---@param info AceConfig.HandlerInfo
+---@param r number
+---@param g number
+---@param b number
+---@param a number
+local function setColor(info, r, g, b, a)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    K.Database.db.profile.commands[commandId][property] = { r, g, b, a }
+    K.Database:FireDataChanged("SetProperty", property)
+end
+
+---@param info AceConfig.HandlerInfo
+---@return string
+local function getNumber(info)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    local value = K.Database.db.profile.commands[commandId][property]
+    return value and tostring(value) or "0"
+end
+
+---@param info AceConfig.HandlerInfo
+---@param value string
+local function setNumber(info, value)
+    local commandId = info[#info - 1]
+    local property = info[#info]
+    K.Database.db.profile.commands[commandId][property] = tonumber(value)
+    K.Database:FireDataChanged("SetProperty", property)
+end
+
+---@param info AceConfig.HandlerInfo
+---@param value string
+---@return number | string
+local function validateNumber(info, value)
+    return tonumber(value) or "Not a number!"
+end
+
+---@param info AceConfig.HandlerInfo
+---@return string
+local function getParentId(info)
+    return getValue(info) or noParentId
+end
+
+---@param info AceConfig.HandlerInfo
+---@param value string
+local function setParentId(info, value)
+    local commandId = info[#info - 1]
+    setValue(info, value ~= noParentId and value or nil)
+    selectCommandGroup(commandId)
+end
+
+---@param node Komand.Node
+---@param excludeCommandId Komand.DB.Id
+---@param func fun(node: Komand.Node)
+local function traverseParents(node, excludeCommandId, func)
+    if node.command.id == excludeCommandId then
+        return
+    end
+
+    func(node)
+
+    for _, childNode in pairs(node.children) do
+        traverseParents(childNode, excludeCommandId, func)
+    end
+end
+
+---@param info AceConfig.HandlerInfo
+---@return table<Komand.DB.Id, string>
+local function getParentValues(info)
+    local commandId = info[#info - 1]
+
+    local values = { [noParentId] = K.Utils.ColorCode { .6, .6, .6 } .. "<No Parent>" }
+
+    for _, rootNode in pairs(K.Database.commandTree.rootNodes) do
+        traverseParents(rootNode, commandId, function(node)
+            values[node.command.id] = ("   "):rep(#node.path) .. node.command.name
+        end)
+    end
+
+    return values
+end
+
+---@param info AceConfig.HandlerInfo
+---@return Komand.DB.Id[]
+local function getParentSorting(info)
+    local commandId = info[#info - 1]
+
+    local sorting = { noParentId }
+
+    for _, rootNode in pairs(K.Database.commandTree.rootNodes) do
+        traverseParents(rootNode, commandId, function(node)
+            table.insert(sorting, node.command.id)
+        end)
+    end
+
+    return sorting
+end
+
+---@param order integer
+---@return AceConfig.Options
+local function buildCommandsOptionsTable(order)
+    return {
+        name = "Commands",
+        order = order,
+        cmdHidden = true,
+        type = "group",
+        args = {
+            add = {
+                name = "Add Command",
+                order = 0,
+                type = "execute",
+                handler = K.Options,
+                func = "OnAddCommand",
+            },
+        },
     }
 end
 
-function K.Options:Build()
-    if self.options == nil then
-        K.Database:FireDataChanged("BuildOptions")
-        self:BuildOptions()
+---@param node Komand.Node
+---@param order integer
+---@return AceConfig.Options
+local function buildCommandOptionsTable(node, order)
+    local command = node.command
+
+    local arg = {
+        name = command.name,
+        order = order,
+        type = "group",
+        args = {
+            selector = {
+                name = "You can't see this",
+                order = 0,
+                handler = K.Options,
+                arg = node,
+                hidden = "OnCommandGroupChanged",
+                type = "input",
+            },
+            enabled = {
+                name = "Enabled",
+                order = 10,
+                width = 0.5,
+                type = "toggle",
+                handler = K.Options,
+                arg = node,
+                get = getValue,
+                set = setValue,
+            },
+            remove = {
+                name = "Remove Command",
+                order = 11,
+                type = "execute",
+                confirm = true,
+                confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children."):format(command.name),
+                handler = K.Options,
+                arg = node,
+                func = "OnRemoveCommand",
+            },
+            br20 = spaceDivider(20),
+            name = {
+                name = "Name",
+                order = 21,
+                width = 1.0,
+                type = "input",
+                handler = K.Options,
+                arg = node,
+                get = getValue,
+                set = setValue,
+            },
+            color = {
+                name = "Color",
+                desc = "Color of the text in the context menu.",
+                order = 22,
+                width = 0.5,
+                type = "color",
+                hasAlpha = false,
+                handler = K.Options,
+                arg = node,
+                get = getColor,
+                set = setColor,
+            },
+            br30 = spaceDivider(30),
+            order = {
+                name = "Order",
+                desc = "Order of the command in the context menu.",
+                order = 31,
+                width = 0.5,
+                type = "input",
+                handler = K.Options,
+                arg = node,
+                get = getNumber,
+                set = setNumber,
+                validate = validateNumber,
+            },
+            br50 = spaceDivider(50),
+            parentId = {
+                name = "Parent",
+                order = 51,
+                width = 1.5,
+                type = "select",
+                style = "dropdown",
+                handler = K.Options,
+                arg = node,
+                get = getParentId,
+                set = setParentId,
+                values = getParentValues,
+                sorting = getParentSorting,
+            },
+            br100 = spaceDivider(100),
+            value = {
+                name = "Command",
+                order = 101,
+                width = "full",
+                type = "input",
+                multiline = 5,
+                handler = K.Options,
+                arg = node,
+                get = getValue,
+                set = setValue,
+            },
+            test = {
+                name = "Test Command",
+                desc = "Execute the command. For testing purposes.",
+                order = 102,
+                type = "execute",
+                handler = K.Options,
+                arg = node,
+                func = "OnExecuteCommand",
+            },
+            br1000 = spaceDivider(1000),
+        }
+    }
+
+    for order, childNode in pairs(node.children) do
+        arg.args[childNode.command.id] = buildCommandOptionsTable(childNode, order)
     end
-    self:UpdateOptions()
-    return self.options
+
+    return arg
 end
 
-function K.Options:BuildOptions()
-    self.options = {
+---@param order integer
+---@return AceConfig.Options
+local function buildGeneralOptionsTable(order)
+    return {
+        name = "General",
+        order = order,
+        cmdHidden = true,
+        type = "group",
+        args = {},
+    }
+end
+
+---@param order integer
+---@return AceConfig.Options
+local function buildProfilesOptionsTable(order)
+    local options = AceDBOptions:GetOptionsTable(K.Database.db, true)
+    options.order = order
+    return options
+end
+
+---@return AceConfig.Options
+local function buildOptionsTable()
+    return {
         type = "group",
         childGroups = "tab",
         args = {
@@ -79,191 +353,72 @@ function K.Options:BuildOptions()
                     AceConfigDialog:Open(K.Addon.name)
                 end
             },
-            commands = self:BuildCommandsOptions(100),
-            general = self:BuildGeneralOptions(200),
-            profiles = self:BuildProfilesOptions(300),
+            [tabKeys.commands] = buildCommandsOptionsTable(100),
+            [tabKeys.general] = buildGeneralOptionsTable(200),
+            [tabKeys.profiles] = buildProfilesOptionsTable(300),
         },
     }
 end
 
-function K.Options:BuildCommandsOptions(order)
-    return {
-        name = "Commands",
-        order = order,
-        cmdHidden = true,
-        type = "group",
-        args = {
-            add = {
-                name = "Add Command",
-                order = 0,
-                type = "execute",
-                handler = self,
-                func = "OnAddCommand",
-            },
-            -- order {commandOrderOffset}+ is reserved for command tree
-        },
-    }
-end
+local function updateCommandsOptionsTable()
+    local args = K.Options.options.args[tabKeys.commands].args
 
-function K.Options:BuildGeneralOptions(order)
-    return {
-        name = "General",
-        order = order,
-        cmdHidden = true,
-        type = "group",
-        args = {},
-    }
-end
-
-function K.Options:BuildProfilesOptions(order)
-    local node = AceDBOptions:GetOptionsTable(K.Database.db, true)
-    node.order = order
-    return node
-end
-
-function K.Options:UpdateOptions()
-    for key, arg in pairs(self.options.args.commands.args) do
-        if arg.order >= commandOrderOffset then
-            self.options.args.commands.args[key] = nil
+    for key, arg in pairs(args) do
+        if arg.type == "group" then
+            args[key] = nil
         end
     end
 
-    for order, node in pairs(K.Database.commandTree.rootNodes) do
-        self.options.args.commands.args[node.command.id] = self:BuildCommand(node, commandOrderOffset + order)
+    for order, rootNode in pairs(K.Database.commandTree.rootNodes) do
+        args[rootNode.command.id] = buildCommandOptionsTable(rootNode, order)
     end
 end
 
-function K.Options:BuildCommand(node, order)
-    local command = node.command
+---@return AceConfig.Options
+local function getOptionsTable()
+    if not K.Options.options then
+        K.Database:FireDataChanged("BuildOptions")
+        K.Options.options = buildOptionsTable()
+    end
 
-    local arg = {
-        name = command.name,
-        order = order,
-        type = "group",
-        args = {
-            selector = {
-                name = "You can't see this",
-                order = 0,
-                handler = self,
-                arg = node,
-                hidden = "OnCommandNodeChanged",
-                type = "input",
-            },
-            enabled = {
-                name = "Enabled",
-                order = 10,
-                width = 0.5,
-                type = "toggle",
-                handler = self,
-                arg = node,
-                get = getValue,
-                set = setValue,
-            },
-            remove = {
-                name = "Remove Command",
-                order = 11,
-                type = "execute",
-                confirm = true,
-                confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children."):format(command.name),
-                handler = self,
-                arg = node,
-                func = "OnRemoveCommand",
-            },
-            br20 = spaceDivider(20),
-            name = {
-                name = "Name",
-                order = 21,
-                width = 1.0,
-                type = "input",
-                handler = self,
-                arg = node,
-                get = getValue,
-                set = setValue,
-            },
-            color = {
-                name = "Color",
-                desc = "Color of the text in the context menu.",
-                order = 22,
-                width = 0.5,
-                type = "color",
-                hasAlpha = false,
-                handler = self,
-                arg = node,
-                get = getColor,
-                set = setColor,
-            },
-            br30 = spaceDivider(30),
-            order = {
-                name = "Order",
-                desc = "Order of the command in the context menu.",
-                order = 31,
-                width = 0.5,
-                type = "input",
-                handler = self,
-                arg = node,
-                get = getNumber,
-                set = setNumber,
-                validate = validateNumber,
-            },
-            br50 = spaceDivider(50),
-            parentId = {
-                name = "Parent",
-                order = 51,
-                width = 1.5,
-                type = "select",
-                style = "dropdown",
-                handler = self,
-                arg = node,
-                get = getParentId,
-                set = setParentId,
-                values = getParentValues,
-                sorting = parentValuesSorting,
-            },
-            br100 = spaceDivider(100),
-            value = {
-                name = "Command",
-                order = 101,
-                width = "full",
-                type = "input",
-                multiline = 5,
-                handler = self,
-                arg = node,
-                get = getValue,
-                set = setValue,
-            },
-            test = {
-                name = "Test Command",
-                desc = "Execute the command. For testing purposes.",
-                order = 102,
-                type = "execute",
-                handler = self,
-                arg = node,
-                func = "OnExecuteCommand",
-            },
-            br1000 = spaceDivider(1000),
-        }
+    updateCommandsOptionsTable()
+
+    return K.Options.options
+end
+
+function K.Options:Initialize()
+    getOptionsTable()
+
+    AceConfig:RegisterOptionsTable(K.Addon.name, getOptionsTable, K.slash)
+
+    AceConfigDialog:SetDefaultSize(K.Addon.name, 640, 640)
+
+    self.frames = {
+        [tabKeys.commands] = AceConfigDialog:AddToBlizOptions(
+            K.Addon.name, K.Addon.name, nil, tabKeys.commands),
+        [tabKeys.general] = AceConfigDialog:AddToBlizOptions(
+            K.Addon.name, self.options.args.general.name, K.Addon.name, tabKeys.general),
+        [tabKeys.profiles] = AceConfigDialog:AddToBlizOptions(
+            K.Addon.name, self.options.args.profiles.name, K.Addon.name, tabKeys.profiles),
     }
-
-    for order, childNode in pairs(node.children) do
-        arg.args[childNode.command.id] = self:BuildCommand(childNode, order)
-    end
-
-    return arg
 end
 
+---@param info AceConfig.HandlerInfo
 function K.Options:OnAddCommand(info)
     local command = K.Database:AddCommand(self.lastCommandId)
-    selectCommand(command.id)
+    selectCommandGroup(command.id)
 end
 
+---@param info AceConfig.HandlerInfo
 function K.Options:OnRemoveCommand(info)
     ---@type Komand.Node
     local node = info.arg
     local command = node.command
     K.Database:RemoveCommand(command.id)
-    selectCommand(command.parentId)
+    selectCommandGroup(command.parentId)
 end
 
+---@param info AceConfig.HandlerInfo
 function K.Options:OnExecuteCommand(info)
     ---@type Komand.Node
     local node = info.arg
@@ -271,112 +426,12 @@ function K.Options:OnExecuteCommand(info)
     K.Command.Execute(command)
 end
 
-function K.Options:OnCommandNodeChanged(info)
+---@param info AceConfig.HandlerInfo
+---@return true
+function K.Options:OnCommandGroupChanged(info)
     ---@type Komand.Node
     local node = info.arg
     local command = node.command
     self.lastCommandId = command.id
     return true
-end
-
-function selectCommand(commandId)
-    local node = commandId and K.Database.commandTree.nodes[commandId]
-    AceConfigDialog:SelectGroup(K.Addon.name, "commands", unpack(node and node.path or {}))
-end
-
-function getValue(info)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    return K.Database.db.profile.commands[commandId][property]
-end
-
-function setValue(info, value, ...)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    K.Database.db.profile.commands[commandId][property] = value
-    K.Database:FireDataChanged("SetProperty", property)
-end
-
-function getColor(info)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    local color = K.Database.db.profile.commands[commandId][property]
-    return unpack(color ~= nil and color or {})
-end
-
-function setColor(info, value, ...)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    K.Database.db.profile.commands[commandId][property] = { value, ... }
-    K.Database:FireDataChanged("SetProperty", property)
-end
-
-function getNumber(info)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    local value = K.Database.db.profile.commands[commandId][property]
-    return value and tostring(value) or "0"
-end
-
-function setNumber(info, value, ...)
-    local commandId = info[#info - 1]
-    local property = info[#info]
-    K.Database.db.profile.commands[commandId][property] = tonumber(value)
-    K.Database:FireDataChanged("SetProperty", property)
-end
-
-function validateNumber(info, value)
-    return tonumber(value) or "Not a number!"
-end
-
-function getParentId(info)
-    return getValue(info) or nilCommandId
-end
-
-function setParentId(info, value, ...)
-    local commandId = info[#info - 1]
-    setValue(info, value ~= nilCommandId and value or nil, ...)
-    selectCommand(commandId)
-end
-
-local function traverseParents(node, excludeCommandId, result, func)
-    if node.command.id == excludeCommandId then
-        return
-    end
-    func(node, result)
-    for _, childNode in pairs(node.children) do
-        traverseParents(childNode, excludeCommandId, result, func)
-    end
-end
-
----@param node Komand.Node
----@param result any
-local function traverseParentsValues(node, result)
-    result[node.command.id] = ("   "):rep(#node.path) .. node.command.name
-end
-
-function getParentValues(info)
-    local commandId = info[#info - 1]
-
-    local values = { [nilCommandId] = "|cff999999<No Parent>" }
-    for _, node in pairs(K.Database.commandTree.rootNodes) do
-        traverseParents(node, commandId, values, traverseParentsValues)
-    end
-
-    return values
-end
-
-local function traverseParentsSorting(node, result)
-    table.insert(result, node.command.id)
-end
-
-function parentValuesSorting(info)
-    local commandId = info[#info - 1]
-
-    local sorting = { nilCommandId }
-    for _, node in pairs(K.Database.commandTree.rootNodes) do
-        traverseParents(node, commandId, sorting, traverseParentsSorting)
-    end
-
-    return sorting
 end
