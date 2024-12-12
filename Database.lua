@@ -1,12 +1,14 @@
 local unpack = unpack ---@diagnostic disable-line: deprecated
 
 local AceDB = LibStub("AceDB-3.0")
+local AceDBOptions = LibStub("AceDBOptions-3.0")
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
+local CallbackHandler = LibStub("CallbackHandler-1.0")
 
 ---@type string, Komand
 local KOMAND, K = ...
 
----@alias Komand.CommandType "command" | "separator"
+---@alias Komand.CommandType "command"|"separator"
 
 ---@class Komand.Node
 ---@field command Komand.DB.Command
@@ -30,20 +32,26 @@ local KOMAND, K = ...
 ---@field order integer
 ---@field value string
 
----@class Komand.DB.Minimap
----@field hide boolean
+---@class Komand.DB.Minimap : LibDBIcon.button.DB
 
 ---@class Komand.DB.Profile
 ---@field commands table<Komand.DB.Id, Komand.DB.Command>
 ---@field minimap Komand.DB.Minimap
 
----@class Komand.DB
+---@class Komand.DB.Schema : AceDB.Schema
 ---@field profile Komand.DB.Profile
----@field [any] unknown
+
+---@class Komand.DB : Komand.DB.Schema, AceDBObject-3.0
+
+---@alias Komand.Database.EventName "OnDataChanged"
 
 ---@class Komand.Database
----@field db Komand.DB
----@field commandTree Komand.Tree
+---@field RegisterCallback fun(target: table, eventName: Komand.Database.EventName, method: string|function)
+---@field UnregisterCallback fun(target: table, eventName: Komand.Database.EventName)
+---@field UnregisterAllCallbacks fun(target: table)
+---@field private commandTree Komand.Tree
+---@field private db Komand.DB
+---@field private callbacks CallbackHandlerRegistry
 K.Database = {}
 
 ---@param commands table<Komand.DB.Id, Komand.DB.Command>
@@ -170,7 +178,7 @@ local function removeCommand(commands, id)
 end
 
 function K.Database:Initialize()
-    ---@type Komand.DB
+    ---@type Komand.DB.Schema
     local defaults = {
         profile = {
             commands = {
@@ -187,23 +195,28 @@ function K.Database:Initialize()
             },
             minimap = {
                 hide = false,
+                lock = false,
+                minimapPos = 0,
             },
         },
     }
 
-    self.db = AceDB:New(K.Addon.name .. "DB", defaults, true)
+    self.callbacks = CallbackHandler:New(self)
+
+    self.db = AceDB:New(K.Addon.name .. "DB", defaults, true) --[[@as Komand.DB]]
     self.db.RegisterCallback(self, "OnNewProfile", "OnNewProfile")
     self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
     self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileCopied")
     self.db.RegisterCallback(self, "OnProfileReset", "OnProfileReset")
-    self.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
+
+    self:RebuildCommandTree(true)
 end
 
 ---@param parentId Komand.DB.Id
 ---@return Komand.DB.Command
 function K.Database:AddCommand(parentId)
     local command = addCommand(self.db.profile.commands, parentId)
-    self:FireDataChanged("AddCommand")
+    self:RebuildCommandTree(true)
     return command
 end
 
@@ -211,8 +224,14 @@ end
 ---@return Komand.DB.Command
 function K.Database:RemoveCommand(id)
     local command = removeCommand(self.db.profile.commands, id)
-    self:FireDataChanged("RemoveCommand")
+    self:RebuildCommandTree(true)
     return command
+end
+
+---@param id Komand.DB.Id
+---@return Komand.DB.Command
+function K.Database:GetCommand(id)
+    return self.db.profile.commands[id]
 end
 
 ---@param query string?
@@ -239,32 +258,50 @@ function K.Database:FindCommand(query)
     return nil
 end
 
----@param ... any
-function K.Database:FireDataChanged(...)
-    self.db.callbacks:Fire("DataChanged", ...)
+---@return Komand.Tree
+function K.Database:GetCommandTree()
+    if not self.commandTree then
+        self.commandTree = buildCommandTree(self.db.profile.commands)
+    end
+    return self.commandTree
 end
 
-function K.Database:OnNewProfile(_, _, profileName)
-    self:FireDataChanged("NewProfile", profileName)
+---@param full boolean?
+function K.Database:RebuildCommandTree(full)
+    if not self.commandTree or full then
+        self.commandTree = buildCommandTree(self.db.profile.commands)
+        self.callbacks:Fire("OnDataChanged", true)
+    else
+        self.callbacks:Fire("OnDataChanged", false)
+    end
+end
+
+---@return Komand.DB.Minimap
+function K.Database:GetMinimap()
+    return self.db.profile.minimap
+end
+
+---@return AceConfig.OptionsTable
+function K.Database:GetProfilesOptionsTable()
+    return AceDBOptions:GetOptionsTable(self.db, true)
+end
+
+function K.Database:OnNewProfile()
+    self:RebuildCommandTree(true)
     AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
-function K.Database:OnProfileChanged(_, _, profileName)
-    self:FireDataChanged("ProfileChanged", profileName)
+function K.Database:OnProfileChanged()
+    self:RebuildCommandTree(true)
     AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
-function K.Database:OnProfileCopied(_, _, profileName)
-    self:FireDataChanged("ProfileCopied", profileName)
+function K.Database:OnProfileCopied()
+    self:RebuildCommandTree(true)
     AceConfigRegistry:NotifyChange(K.Addon.name)
 end
 
 function K.Database:OnProfileReset()
-    self:FireDataChanged("ProfileReset")
+    self:RebuildCommandTree(true)
     AceConfigRegistry:NotifyChange(K.Addon.name)
-end
-
----@param ... any
-function K.Database:OnDataChanged(...)
-    self.commandTree = buildCommandTree(self.db.profile.commands)
 end

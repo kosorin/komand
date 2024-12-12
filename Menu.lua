@@ -2,7 +2,7 @@
 local KOMAND, K = ...
 
 ---@class Komand.Menu
----@field frame W.Frame
+---@field frame Frame
 K.Menu = {}
 
 ---@param _ unknown
@@ -14,7 +14,7 @@ end
 
 ---@param node Komand.Node
 ---@param isHeader boolean
----@return W.DropDownMenuButtonInfo
+---@return unknown
 local function createButton(node, isHeader)
     local info = {}
 
@@ -41,7 +41,7 @@ local function initializeMenu(_, level)
         return
     end
 
-    local tree = K.Database.commandTree
+    local tree = K.Database:GetCommandTree()
 
     local parentNode = UIDROPDOWNMENU_MENU_VALUE and tree.nodes[UIDROPDOWNMENU_MENU_VALUE]
     if level == 1 and parentNode then
@@ -56,16 +56,16 @@ local function initializeMenu(_, level)
     end
 end
 
----@return W.Frame
+---@return Frame
 local function createFrame()
     local frame = CreateFrame("Frame", K.Addon.name .. "Menu", UIParent, "UIDropDownMenuTemplate")
     frame.displayMode = "MENU"
     frame.initialize = initializeMenu
-    return frame
+    return frame --[[@as Frame]]
 end
 
 function K.Menu:Initialize()
-    K.Database.db.RegisterCallback(self, "DataChanged", "OnDataChanged")
+    K.Database.RegisterCallback(self, "OnDataChanged", "OnDataChanged")
 end
 
 ---@param query string?
