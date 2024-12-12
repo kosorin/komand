@@ -1,4 +1,4 @@
-local unpack = unpack ---@diagnostic disable-line: deprecated
+local unpack = unpack
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")

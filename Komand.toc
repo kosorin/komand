@@ -1,26 +1,52 @@
 ## Interface: 11505
 ## Title: Komand
-## Notes: Context menu for custom comands.
-## Author: Posix
-## Version: 2
+## Notes: Context menu for custom commands.
+## Author: David Kosorin
+## Version: 3
 ## SavedVariables: KomandDB
 
-# Libs\LibStub\LibStub.lua
-# Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
-# Libs\AceAddon-3.0\AceAddon-3.0.xml
-# Libs\AceEvent-3.0\AceEvent-3.0.xml
-# Libs\AceDB-3.0\AceDB-3.0.xml
-# Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
-# Libs\AceConsole-3.0\AceConsole-3.0.xml
-# Libs\AceGUI-3.0\AceGUI-3.0.xml
-# Libs\AceConfig-3.0\AceConfig-3.0.xml
+# svn::https://repos.wowace.com/wow/libstub/trunk
+Libs\LibStub\LibStub.lua
+# svn::https://repos.wowace.com/wow/callbackhandler/trunk/CallbackHandler-1.0
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+# git::https://repos.wowace.com/wow/libdatabroker-1-1
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+# svn::https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
+Libs\LibDBIcon-1.0\lib.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceAddon-3.0
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceEvent-3.0
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceTimer-3.0
+Libs\AceTimer-3.0\AceTimer-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceBucket-3.0
+Libs\AceBucket-3.0\AceBucket-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceHook-3.0
+Libs\AceHook-3.0\AceHook-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceDB-3.0
+Libs\AceDB-3.0\AceDB-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceDBOptions-3.0
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceLocale-3.0
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceConsole-3.0
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceGUI-3.0
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceConfig-3.0
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceComm-3.0
+Libs\AceComm-3.0\AceComm-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceTab-3.0
+Libs\AceTab-3.0\AceTab-3.0.xml
+# svn::https://repos.wowace.com/wow/ace3/trunk/AceSerializer-3.0
+Libs\AceSerializer-3.0\AceSerializer-3.0.xml
 
-Core.lua
-
-Utils.lua
-Addon.lua
-Database.lua
-Broker.lua
-Command.lua
-Options.lua
-Menu.lua
+Source\Core.lua
+Source\Utils.lua
+Source\Addon.lua
+Source\Database.lua
+Source\Broker.lua
+Source\Command.lua
+Source\Options.lua
+Source\Menu.lua

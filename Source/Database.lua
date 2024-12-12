@@ -1,4 +1,4 @@
-local unpack = unpack ---@diagnostic disable-line: deprecated
+local unpack = unpack
 
 local AceDB = LibStub("AceDB-3.0")
 local AceDBOptions = LibStub("AceDBOptions-3.0")
