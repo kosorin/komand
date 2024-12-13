@@ -42,11 +42,10 @@ Libs\AceTab-3.0\AceTab-3.0.xml
 # svn::https://repos.wowace.com/wow/ace3/trunk/AceSerializer-3.0
 Libs\AceSerializer-3.0\AceSerializer-3.0.xml
 
-Source\Core.lua
 Source\Utils.lua
 Source\Addon.lua
 Source\Database.lua
-Source\Broker.lua
 Source\Command.lua
+Source\Broker.lua
 Source\Options.lua
 Source\Menu.lua

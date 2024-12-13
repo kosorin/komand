@@ -1,4 +1,5 @@
-local unpack = unpack
+local pairs, ipairs, unpack, tonumber, tostring = pairs, ipairs, unpack, tonumber, tostring
+local table, string, math = table, string, math
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
@@ -11,11 +12,22 @@ local KOMAND, K = ...
 ---@field arg any
 ---@field [integer] string
 
----@class Komand.Options
+---@class Komand.Module.Options : Komand.Module
 ---@field private options AceConfig.OptionsTable
 ---@field private tabFrames table
 K.Options = {}
 
+local tabKeys = {
+    commands = "commands",
+    general = "general",
+    profiles = "profiles",
+}
+
+---@type ID
+local noParentId = ""
+
+---@param order integer
+---@return AceConfig.OptionsTable
 local function spaceDivider(order)
     return {
         name = "",
@@ -25,20 +37,11 @@ local function spaceDivider(order)
     }
 end
 
-local tabKeys = {
-    commands = "commands",
-    general = "general",
-    profiles = "profiles",
-}
-
----@type Komand.DB.Id
-local noParentId = ""
-
----@param commandId Komand.DB.Id?
+---@param commandId ID?
 local function selectCommandGroup(commandId)
-    local node = commandId and K.Database:GetCommandTree().nodes[commandId]
+    local node = commandId and K.Command.tree.nodes[commandId]
     local path = node and node.path or {}
-    AceConfigDialog:SelectGroup(K.Addon.name, tabKeys.commands, unpack(path))
+    AceConfigDialog:SelectGroup(K.addon.name, tabKeys.commands, unpack(path))
 end
 
 ---@param info AceConfig.HandlerInfo
@@ -46,7 +49,7 @@ end
 local function getValue(info)
     local commandId = info[#info - 1]
     local property = info[#info]
-    return K.Database:GetCommand(commandId)[property]
+    return K.Command:Get(commandId)[property]
 end
 
 ---@param info AceConfig.HandlerInfo
@@ -54,8 +57,8 @@ end
 local function setValue(info, value)
     local commandId = info[#info - 1]
     local property = info[#info]
-    K.Database:GetCommand(commandId)[property] = value
-    K.Database:RebuildCommandTree()
+    K.Command:Get(commandId)[property] = value
+    K.Command:RebuildTree()
 end
 
 ---@param info AceConfig.HandlerInfo
@@ -63,7 +66,7 @@ end
 local function getColor(info)
     local commandId = info[#info - 1]
     local property = info[#info]
-    local color = K.Database:GetCommand(commandId)[property]
+    local color = K.Command:Get(commandId)[property]
     ---@diagnostic disable-next-line: redundant-return-value
     return unpack(color ~= nil and color or {})
 end
@@ -76,8 +79,8 @@ end
 local function setColor(info, r, g, b, a)
     local commandId = info[#info - 1]
     local property = info[#info]
-    K.Database:GetCommand(commandId)[property] = { r, g, b, a }
-    K.Database:RebuildCommandTree()
+    K.Command:Get(commandId)[property] = { r, g, b, a }
+    K.Command:RebuildTree()
 end
 
 ---@param info AceConfig.HandlerInfo
@@ -85,7 +88,7 @@ end
 local function getNumber(info)
     local commandId = info[#info - 1]
     local property = info[#info]
-    local value = K.Database:GetCommand(commandId)[property]
+    local value = K.Command:Get(commandId)[property]
     return value and tostring(value) or "0"
 end
 
@@ -94,8 +97,8 @@ end
 local function setNumber(info, value)
     local commandId = info[#info - 1]
     local property = info[#info]
-    K.Database:GetCommand(commandId)[property] = tonumber(value)
-    K.Database:RebuildCommandTree()
+    K.Command:Get(commandId)[property] = tonumber(value)
+    K.Command:RebuildTree()
 end
 
 ---@param info AceConfig.HandlerInfo
@@ -116,14 +119,14 @@ end
 local function setParentId(info, value)
     local commandId = info[#info - 1]
     local property = info[#info]
-    K.Database:GetCommand(commandId)[property] = value ~= noParentId and value or nil
-    K.Database:RebuildCommandTree(true)
+    K.Command:Get(commandId)[property] = value ~= noParentId and value or nil
+    K.Command:RebuildTree(true)
     selectCommandGroup(commandId)
 end
 
----@param node Komand.Node
----@param excludeCommandId Komand.DB.Id
----@param callback fun(node: Komand.Node)
+---@param node Komand.Command.Node
+---@param excludeCommandId ID
+---@param callback fun(node: Komand.Command.Node)
 local function traverseParents(node, excludeCommandId, callback)
     if node.command.id == excludeCommandId then
         return
@@ -137,13 +140,13 @@ local function traverseParents(node, excludeCommandId, callback)
 end
 
 ---@param info AceConfig.HandlerInfo
----@return table<Komand.DB.Id, string>
+---@return table<ID, string>
 local function getParentValues(info)
     local commandId = info[#info - 1]
 
     local values = { [noParentId] = K.Utils.ColorCode { .6, .6, .6 } .. "<No Parent>" }
 
-    for _, rootNode in pairs(K.Database:GetCommandTree().rootNodes) do
+    for _, rootNode in pairs(K.Command.tree.rootNodes) do
         traverseParents(rootNode, commandId, function(node)
             values[node.command.id] = ("   "):rep(#node.path) .. node.command.name
         end)
@@ -153,13 +156,13 @@ local function getParentValues(info)
 end
 
 ---@param info AceConfig.HandlerInfo
----@return Komand.DB.Id[]
+---@return ID[]
 local function getParentSorting(info)
     local commandId = info[#info - 1]
 
     local sorting = { noParentId }
 
-    for _, rootNode in pairs(K.Database:GetCommandTree().rootNodes) do
+    for _, rootNode in pairs(K.Command.tree.rootNodes) do
         traverseParents(rootNode, commandId, function(node)
             table.insert(sorting, node.command.id)
         end)
@@ -188,7 +191,7 @@ local function buildCommandsOptionsTable(order)
     }
 end
 
----@param node Komand.Node
+---@param node Komand.Command.Node
 ---@param order integer
 ---@return AceConfig.OptionsTable
 local function buildCommandOptionsTable(node, order)
@@ -324,7 +327,7 @@ end
 ---@param order integer
 ---@return AceConfig.OptionsTable
 local function buildProfilesOptionsTable(order)
-    local options = K.Database:GetProfilesOptionsTable()
+    local options = AceDBOptions:GetOptionsTable(K.Database.db, true)
     options.order = order
     return options
 end
@@ -350,7 +353,7 @@ local function buildOptionsTable()
                 guiHidden = true,
                 type = "input",
                 set = function(info, value)
-                    AceConfigDialog:Open(K.Addon.name)
+                    AceConfigDialog:Open(K.addon.name)
                 end
             },
             [tabKeys.commands] = buildCommandsOptionsTable(100),
@@ -363,7 +366,7 @@ end
 function K.Options:Initialize()
     self.options = buildOptionsTable()
 
-    AceConfig:RegisterOptionsTable(K.Addon.name, function()
+    AceConfig:RegisterOptionsTable(K.addon.name, function()
         local args = self.options.args[tabKeys.commands].args or {}
 
         for key, arg in pairs(args) do
@@ -372,50 +375,50 @@ function K.Options:Initialize()
             end
         end
 
-        for order, rootNode in pairs(K.Database:GetCommandTree().rootNodes) do
+        for order, rootNode in pairs(K.Command.tree.rootNodes) do
             args[rootNode.command.id] = buildCommandOptionsTable(rootNode, order)
         end
 
         return self.options
     end, K.slash)
 
-    AceConfigDialog:SetDefaultSize(K.Addon.name, 640, 640)
+    AceConfigDialog:SetDefaultSize(K.addon.name, 640, 640)
 
     self.tabFrames = {
         [tabKeys.commands] = AceConfigDialog:AddToBlizOptions(
-            K.Addon.name, K.Addon.name, nil, tabKeys.commands),
+            K.addon.name, K.addon.name, nil, tabKeys.commands),
         [tabKeys.general] = AceConfigDialog:AddToBlizOptions(
-            K.Addon.name, self.options.args.general.name, K.Addon.name, tabKeys.general),
+            K.addon.name, self.options.args.general.name, K.addon.name, tabKeys.general),
         [tabKeys.profiles] = AceConfigDialog:AddToBlizOptions(
-            K.Addon.name, self.options.args.profiles.name, K.Addon.name, tabKeys.profiles),
+            K.addon.name, self.options.args.profiles.name, K.addon.name, tabKeys.profiles),
     }
 end
 
 ---@param info AceConfig.HandlerInfo
 function K.Options:OnAddCommand(info)
-    local command = K.Database:AddCommand(self.lastCommandId)
+    local command = K.Command:Add(self.lastCommandId)
     selectCommandGroup(command.id)
 end
 
 ---@param info AceConfig.HandlerInfo
 function K.Options:OnRemoveCommand(info)
-    local node = info.arg --[[@as Komand.Node]]
+    local node = info.arg --[[@as Komand.Command.Node]]
     local command = node.command
-    K.Database:RemoveCommand(command.id)
+    K.Command:Remove(command.id)
     selectCommandGroup(command.parentId)
 end
 
 ---@param info AceConfig.HandlerInfo
 function K.Options:OnExecuteCommand(info)
-    local node = info.arg --[[@as Komand.Node]]
+    local node = info.arg --[[@as Komand.Command.Node]]
     local command = node.command
-    K.Command.Execute(command)
+    K.Command:Execute(command)
 end
 
 ---@param info AceConfig.HandlerInfo
 ---@return true
 function K.Options:OnCommandGroupChanged(info)
-    local node = info.arg --[[@as Komand.Node]]
+    local node = info.arg --[[@as Komand.Command.Node]]
     local command = node.command
     self.lastCommandId = command.id
     return true

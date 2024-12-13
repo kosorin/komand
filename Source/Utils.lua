@@ -1,7 +1,10 @@
+local pairs, ipairs, unpack, tonumber, tostring = pairs, ipairs, unpack, tonumber, tostring
+local table, string, math = table, string, math
+
 ---@type string, Komand
 local KOMAND, K = ...
 
----@class Komand.Utils
+---@class Komand.Module.Utils : Komand.Module
 K.Utils = {}
 
 ---@alias color { [1]: number?, [2]: number?, [3]: number?, [4]: number? } RGBA
