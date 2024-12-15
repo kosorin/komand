@@ -37,6 +37,7 @@ install() {
         ;;
     git)
         git clone "$3" "$2"
+        (cd "$2" && git config core.fileMode false)
         ;;
     esac
 }
