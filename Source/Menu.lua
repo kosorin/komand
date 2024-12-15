@@ -21,9 +21,8 @@ local function executeCommand(info, command)
 end
 
 ---@param node Komand.Command.Node
----@param isHeader boolean
 ---@param level integer
-local function addMenuItem(node, isHeader, level)
+local function addMenuItem(node, level)
     local command = node.command
 
     if command.type == "macro" or command.type == "lua" then
@@ -35,7 +34,7 @@ local function addMenuItem(node, isHeader, level)
 
         info.notCheckable = true
         info.isTitle = false
-        info.hasArrow = not isHeader and #node.children > 0
+        info.hasArrow = #node.children > 0
         info.colorCode = K.Utils.ColorCode(command.color)
         info.text = command.name
         info.tooltipTitle = command.name
@@ -79,17 +78,9 @@ local function initializeMenu(frame, level)
     local parenttNode = parentCommandId and K.Command.tree.nodes[parentCommandId]
     local nodes = parenttNode and parenttNode.children or K.Command.tree.rootNodes
 
-    if parenttNode and level == 1 then
-        if parenttNode.command.hide then
-            return
-        end
-        addMenuItem(parenttNode, true, level)
-        addMenuSeparator(level)
-    end
-
     for _, node in pairs(nodes) do
         if not node.command.hide then
-            addMenuItem(node, false, level)
+            addMenuItem(node, level)
         end
     end
 

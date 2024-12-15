@@ -75,6 +75,12 @@ local function buildTree(commands)
             return aa < bb
         end
 
+        aa = a.command.type == "separator"
+        bb = b.command.type == "separator"
+        if aa ~= bb then
+            return aa
+        end
+
         aa = a.command.name:upper()
         bb = b.command.name:upper()
         if aa ~= bb then
@@ -125,7 +131,7 @@ end
 function K.Command:Initialize()
     self.callbacks = CallbackHandler:New(self) --[[@as Komand.Module.Command.CallbackHandlerRegistry]]
 
-    self:RebuildTree(true)
+    self:RebuildTree()
 end
 
 ---@param command Komand.Command
@@ -192,7 +198,7 @@ do
     ---@return Komand.Command
     function K.Command:Add(parentId)
         local command = addDB(K.Database.db.profile.commands, parentId)
-        self:RebuildTree(true)
+        self:RebuildTree()
         return command
     end
 end
@@ -216,15 +222,12 @@ do
     ---@return Komand.Command
     function K.Command:Remove(id)
         local command = removeDB(K.Database.db.profile.commands, id)
-        self:RebuildTree(true)
+        self:RebuildTree()
         return command
     end
 end
 
----@param full boolean?
-function K.Command:RebuildTree(full)
-    if full then
-        self.tree = buildTree(K.Database.db.profile.commands)
-    end
-    self.callbacks:Fire("OnTreeChanged", full)
+function K.Command:RebuildTree()
+    self.tree = buildTree(K.Database.db.profile.commands)
+    self.callbacks:Fire("OnTreeChanged")
 end

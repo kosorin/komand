@@ -26,12 +26,44 @@ local tabKeys = {
     profiles = "profiles",
 }
 
----@param order integer
+---@param args AceConfig.OptionsTable[]
+---@return table<string, AceConfig.OptionsTable>
+local function build(args)
+    local result = {}
+
+    local unspecifiedKey = 1
+
+    for order, value in ipairs(args) do
+        local key = value.key
+
+        if not key then
+            key = "__key" .. tostring(unspecifiedKey)
+            unspecifiedKey = unspecifiedKey + 1
+        end
+
+        value.key = nil ---@diagnostic disable-line: inject-field
+        value.order = order
+
+        result[key] = value
+    end
+
+    return result
+end
+
+---@param width number?
 ---@return AceConfig.OptionsTable
-local function spaceDivider(order)
+local function space(width)
     return {
         name = "",
-        order = order,
+        width = width or 0.1,
+        type = "description",
+    }
+end
+
+---@return AceConfig.OptionsTable
+local function lineBreak()
+    return {
+        name = "",
         width = "full",
         type = "description",
     }
@@ -56,6 +88,8 @@ local function traverseParents(node, excludeCommandId, callback)
 end
 
 do
+    local separatorName = "-------"
+
     ---@param commandId ID?
     local function selectCommandGroup(commandId)
         local node = commandId and K.Command.tree.nodes[commandId]
@@ -129,6 +163,31 @@ do
 
     ---@param info AceConfig.HandlerInfo
     ---@return string
+    local function getType(info)
+        return getValue(info) or notSetSelectKey
+    end
+
+    ---@param info AceConfig.HandlerInfo
+    ---@param value string
+    local function setType(info, value)
+        local commandId = info[#info - 1]
+        local property = info[#info]
+        K.Command:Get(commandId)[property] = value ~= notSetSelectKey and value or nil
+        K.Command:RebuildTree()
+    end
+
+    ---@param info AceConfig.HandlerInfo
+    ---@return table<Komand.Command.Type, string>
+    local function getTypeValues(info)
+        return {
+            ["macro"] = "Macro",
+            ["lua"] = "Lua script",
+            ["separator"] = "Separator",
+        }
+    end
+
+    ---@param info AceConfig.HandlerInfo
+    ---@return string
     local function getParentId(info)
         return getValue(info) or notSetSelectKey
     end
@@ -139,7 +198,7 @@ do
         local commandId = info[#info - 1]
         local property = info[#info]
         K.Command:Get(commandId)[property] = value ~= notSetSelectKey and value or nil
-        K.Command:RebuildTree(true)
+        K.Command:RebuildTree()
         selectCommandGroup(commandId)
     end
 
@@ -149,7 +208,7 @@ do
         local commandId = info[#info - 1]
 
         local values = {
-            [notSetSelectKey] = K.Utils.ColorCode { .6, .6, .6 } .. "<No Parent>",
+            [notSetSelectKey] = K.Utils.ColorCode { .6, .6, .6 } .. "<Root>",
         }
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
@@ -213,133 +272,170 @@ do
         return true
     end
 
+    ---@private
+    ---@param info AceConfig.HandlerInfo
+    ---@return string
+    local function commandName(info)
+        local commandId = info[#info]
+        local command = K.Command:Get(commandId)
+        return command.type == "separator"
+            and separatorName
+            or command.name
+    end
+
+    ---@private
+    ---@param info AceConfig.HandlerInfo
+    ---@return true
+    local function commandIsSeparator(info)
+        local commandId = info[#info - 1]
+        local command = K.Command:Get(commandId)
+        return command.type == "separator"
+    end
+
     ---@param node Komand.Command.Node
-    ---@param order integer
     ---@return AceConfig.OptionsTable
-    local function buildCommandOptionsTable(node, order)
+    local function buildCommandOptionsTable(node)
         local command = node.command
 
-        ---@type AceConfig.OptionsTable
-        local optionsTable = {
-            name = command.name,
-            order = order,
-            type = "group",
-            args = {
-                selector = {
-                    name = "HIDDEN",
-                    order = 0,
-                    handler = K.Options,
-                    hidden = commandGroupChanged,
-                    type = "input",
-                },
-                hide = {
-                    name = "Hide",
-                    order = 10,
-                    width = 0.5,
-                    type = "toggle",
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                remove = {
-                    name = "Remove Command",
-                    order = 15,
-                    type = "execute",
-                    confirm = true,
-                    confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children.")
-                        :format(command.name),
-                    handler = K.Options,
-                    func = removeCommand,
-                },
-                br20 = spaceDivider(20),
-                name = {
-                    name = "Name",
-                    order = 21,
-                    width = 1.0,
-                    type = "input",
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                color = {
-                    name = "Color",
-                    desc = "Color of the text in the context menu.",
-                    order = 22,
-                    width = 0.5,
-                    type = "color",
-                    hasAlpha = false,
-                    handler = K.Options,
-                    get = getColor,
-                    set = setColor,
-                },
-                br30 = spaceDivider(30),
-                order = {
-                    name = "Order",
-                    desc = "Order of the command in the context menu.",
-                    order = 31,
-                    width = 0.5,
-                    type = "input",
-                    handler = K.Options,
-                    get = getNumber,
-                    set = setNumber,
-                    validate = validateNumber,
-                },
-                br50 = spaceDivider(50),
-                parentId = {
-                    name = "Parent",
-                    order = 51,
-                    width = 1.5,
-                    type = "select",
-                    style = "dropdown",
-                    handler = K.Options,
-                    get = getParentId,
-                    set = setParentId,
-                    values = getParentValues,
-                    sorting = getParentSorting,
-                },
-                br100 = spaceDivider(100),
-                script = {
-                    name = "Script",
-                    order = 101,
-                    width = "full",
-                    type = "input",
-                    multiline = 5,
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                test = {
-                    name = "Test Command",
-                    desc = "Execute the command. For testing purposes.",
-                    order = 102,
-                    type = "execute",
-                    handler = K.Options,
-                    func = executeCommand,
-                },
+        local argsSource = {
+            {
+                key = "selector",
+                name = "HIDDEN",
+                handler = K.Options,
+                hidden = commandGroupChanged,
+                type = "input",
+            },
+            {
+                key = "hide",
+                name = "Hide",
+                width = 0.5,
+                type = "toggle",
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            {
+                key = "remove",
+                name = "Remove Command",
+                type = "execute",
+                confirm = true,
+                confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children.")
+                    :format(command.name),
+                handler = K.Options,
+                func = removeCommand,
+            },
+            lineBreak(),
+            {
+                key = "type",
+                name = "Type",
+                width = 0.75,
+                type = "select",
+                style = "dropdown",
+                handler = K.Options,
+                get = getType,
+                set = setType,
+                values = getTypeValues,
+            },
+            space(),
+            {
+                key = "order",
+                name = "Order",
+                desc = "Order of the command in the context menu.",
+                width = 0.5,
+                type = "input",
+                handler = K.Options,
+                get = getNumber,
+                set = setNumber,
+                validate = validateNumber,
+            },
+            lineBreak(),
+            {
+                key = "parentId",
+                name = "Parent",
+                width = 1.5,
+                type = "select",
+                style = "dropdown",
+                handler = K.Options,
+                get = getParentId,
+                set = setParentId,
+                values = getParentValues,
+                sorting = getParentSorting,
+            },
+            lineBreak(),
+            {
+                key = "name",
+                name = "Name",
+                width = 1.0,
+                hidden = commandIsSeparator,
+                type = "input",
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            space(),
+            {
+                key = "color",
+                name = "Color",
+                desc = "Color of the text in the context menu.",
+                width = 0.5,
+                hidden = commandIsSeparator,
+                type = "color",
+                hasAlpha = false,
+                handler = K.Options,
+                get = getColor,
+                set = setColor,
+            },
+            lineBreak(),
+            {
+                key = "script",
+                name = "Script",
+                width = "full",
+                hidden = commandIsSeparator,
+                type = "input",
+                multiline = 5,
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            {
+                key = "test",
+                name = "Test Command",
+                desc = "Execute the command. For testing purposes.",
+                hidden = commandIsSeparator,
+                type = "execute",
+                handler = K.Options,
+                func = executeCommand,
             },
         }
 
-        for order, childNode in pairs(node.children) do
-            optionsTable.args[childNode.command.id] = buildCommandOptionsTable(childNode, order)
+        for _, childNode in pairs(node.children) do
+            table.insert(argsSource, buildCommandOptionsTable(childNode))
         end
+
+        ---@type AceConfig.OptionsTable
+        local optionsTable = {
+            key = node.command.id,
+            name = commandName,
+            type = "group",
+            args = build(argsSource),
+        }
 
         return optionsTable
     end
 
     ---@private
-    ---@param order integer
     ---@return AceConfig.OptionsTable
-    function K.Options:BuildCommandsOptionsTable(order)
+    function K.Options:BuildCommandsOptionsTable()
         ---@type AceConfig.OptionsTable
         return {
+            key = tabKeys.commands,
             name = "Commands",
-            order = order,
             cmdHidden = true,
             type = "group",
-            args = {
-                add = {
+            args = build {
+                {
+                    key = "add",
                     name = "Add Command",
-                    order = 0,
                     type = "execute",
                     handler = K.Options,
                     func = addCommand,
@@ -357,8 +453,13 @@ do
             end
         end
 
-        for order, rootNode in ipairs(K.Command.tree.rootNodes) do
-            args[rootNode.command.id] = buildCommandOptionsTable(rootNode, order)
+        local argsSource = {}
+        for _, rootNode in ipairs(K.Command.tree.rootNodes) do
+            table.insert(argsSource, buildCommandOptionsTable(rootNode))
+        end
+
+        for key, childArgs in pairs(build(argsSource)) do
+            args[key] = childArgs
         end
     end
 end
@@ -436,6 +537,16 @@ do
     end
 
     ---@param info AceConfig.HandlerInfo
+    ---@return table<Komand.Button.Action.Type, string>
+    local function getActionTypeValues(info)
+        return {
+            [""] = K.Utils.ColorCode { .6, .6, .6 } .. "<Not Set>",
+            ["showMenu"] = "Show menu",
+            ["executeCommand"] = "Execute command",
+        }
+    end
+
+    ---@param info AceConfig.HandlerInfo
     ---@return string
     local function getActionCommandId(info)
         return getActionValue(info) or notSetSelectKey
@@ -449,16 +560,6 @@ do
         local property = info[#info]
         K.Button:Get(buttonId).actions[actionKey][property] = value ~= notSetSelectKey and value or nil
         K.Button:Refresh(buttonId)
-    end
-
-    ---@param info AceConfig.HandlerInfo
-    ---@return table<Komand.Button.Action.Type, string>
-    local function getActionTypeValues(info)
-        return {
-            [""] = K.Utils.ColorCode { .6, .6, .6 } .. "<Not Set>",
-            ["showMenu"] = "Show menu",
-            ["executeCommand"] = "Execute command",
-        }
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -517,19 +618,18 @@ do
     end
 
     ---@param object Komand.Button.Object
-    ---@param order integer
     ---@param tab Komand.Options.ButtonActionTab
     ---@return AceConfig.OptionsTable?
-    local function buildButtonActionOptionsTable(object, order, tab)
+    local function buildButtonActionOptionsTable(object, tab)
         ---@type AceConfig.OptionsTable
         return {
+            key = tab.key,
             name = tab.title,
-            order = order,
             type = "group",
-            args = {
-                type = {
+            args = build {
+                {
+                    key = "type",
                     name = "Type",
-                    order = 1,
                     width = "normal",
                     type = "select",
                     style = "dropdown",
@@ -538,9 +638,9 @@ do
                     set = setActionType,
                     values = getActionTypeValues,
                 },
-                commandId = {
+                {
+                    key = "commandId",
                     name = "Command",
-                    order = 2,
                     width = 1.5,
                     type = "select",
                     style = "dropdown",
@@ -555,91 +655,88 @@ do
     end
 
     ---@param object Komand.Button.Object
-    ---@param order integer
     ---@return AceConfig.OptionsTable
-    local function buildButtonOptionsTable(object, order)
+    local function buildButtonOptionsTable(object)
         local button = object.button
 
-        local buttonActionTabsOrderOffset = 100
+        local argsSource = {
+            {
+                key = "selector",
+                name = "HIDDEN",
+                handler = K.Options,
+                hidden = buttonGroupChanged,
+                type = "input",
+            },
+            {
+                key = "hide",
+                name = "Hide",
+                width = 0.5,
+                type = "toggle",
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            {
+                key = "lock",
+                name = "Lock",
+                width = 0.5,
+                type = "toggle",
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            {
+                key = "remove",
+                name = "Remove Button",
+                type = "execute",
+                confirm = true,
+                confirmText = ("Remove '|cffff0000%s|r' button?")
+                    :format(button.name),
+                handler = K.Options,
+                func = removeButton,
+            },
+            lineBreak(),
+            {
+                key = "name",
+                name = "Name",
+                width = 1.0,
+                type = "input",
+                handler = K.Options,
+                get = getValue,
+                set = setValue,
+            },
+            lineBreak(),
+        }
+
+        for _, tab in ipairs(buttonActionTabs) do
+            table.insert(argsSource, buildButtonActionOptionsTable(object, tab))
+        end
 
         ---@type AceConfig.OptionsTable
         local optionsTable = {
+            key = button.id,
             name = button.name,
-            order = order,
             type = "group",
             childGroups = "tab",
-            args = {
-                selector = {
-                    name = "HIDDEN",
-                    order = 0,
-                    handler = K.Options,
-                    hidden = buttonGroupChanged,
-                    type = "input",
-                },
-                hide = {
-                    name = "Hide",
-                    order = 10,
-                    width = 0.5,
-                    type = "toggle",
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                lock = {
-                    name = "Lock",
-                    order = 11,
-                    width = 0.5,
-                    type = "toggle",
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                remove = {
-                    name = "Remove Button",
-                    order = 15,
-                    type = "execute",
-                    confirm = true,
-                    confirmText = ("Remove '|cffff0000%s|r' button?")
-                        :format(button.name),
-                    handler = K.Options,
-                    func = removeButton,
-                },
-                br20 = spaceDivider(20),
-                name = {
-                    name = "Name",
-                    order = 21,
-                    width = 1.0,
-                    type = "input",
-                    handler = K.Options,
-                    get = getValue,
-                    set = setValue,
-                },
-                br100 = spaceDivider(buttonActionTabsOrderOffset),
-            },
+            args = build(argsSource),
         }
-
-        for i, tab in ipairs(buttonActionTabs) do
-            local tabOrder = buttonActionTabsOrderOffset + i
-            optionsTable.args[tab.key] = buildButtonActionOptionsTable(object, tabOrder, tab)
-        end
 
         return optionsTable
     end
 
     ---@private
-    ---@param order integer
     ---@return AceConfig.OptionsTable
-    function K.Options:BuildButtonsOptionsTable(order)
+    function K.Options:BuildButtonsOptionsTable()
         ---@type AceConfig.OptionsTable
         return {
+            key = tabKeys.buttons,
             name = "Buttons",
-            order = order,
             cmdHidden = true,
             type = "group",
-            args = {
-                add = {
+            args = build {
+                {
+                    key = "add",
                     name = "Add Button",
-                    order = 0,
                     type = "execute",
                     handler = K.Options,
                     func = addButton,
@@ -676,18 +773,22 @@ do
             return aa < bb
         end)
 
-        for order, object in ipairs(sortedCollection) do
-            args[object.button.id] = buildButtonOptionsTable(object, order)
+        local argsSource = {}
+        for _, object in ipairs(sortedCollection) do
+            table.insert(argsSource, buildButtonOptionsTable(object))
+        end
+
+        for key, childArgs in pairs(build(argsSource)) do
+            args[key] = childArgs
         end
     end
 end
 
 ---@private
----@param order integer
 ---@return AceConfig.OptionsTable
-function K.Options:BuildProfilesOptionsTable(order)
+function K.Options:BuildProfilesOptionsTable()
     local options = AceDBOptions:GetOptionsTable(K.Database.db, true)
-    options.order = order
+    options.key = tabKeys.profiles ---@diagnostic disable-line: inject-field
     return options
 end
 
@@ -699,30 +800,30 @@ function K.Options:BuildOptionsTable()
         name = K.addon.name,
         type = "group",
         childGroups = "tab",
-        args = {
-            show = {
+        args = build {
+            {
+                key = "show",
                 name = "Show",
                 desc = "Shows the menu.",
-                order = 0,
                 guiHidden = true,
                 type = "input",
                 set = function(info, value)
                     K.Menu:Show(K.Command:Find(value))
                 end,
             },
-            options = {
+            {
+                key = "options",
                 name = "Options",
                 desc = "Shows the options.",
-                order = 1,
                 guiHidden = true,
                 type = "input",
                 set = function(info, value)
                     AceConfigDialog:Open(K.addon.name)
                 end,
             },
-            [tabKeys.commands] = self:BuildCommandsOptionsTable(100),
-            [tabKeys.buttons] = self:BuildButtonsOptionsTable(200),
-            [tabKeys.profiles] = self:BuildProfilesOptionsTable(300),
+            self:BuildCommandsOptionsTable(),
+            self:BuildButtonsOptionsTable(),
+            self:BuildProfilesOptionsTable(),
         },
     }
 end
