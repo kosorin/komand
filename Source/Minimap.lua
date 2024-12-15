@@ -84,6 +84,8 @@ function K.Minimap:Refresh(object)
     local button = object.button
     local item = self.items[button.id]
 
+    item.object.icon = button.icon or defaultIcon
+
     LibDBIcon:Refresh(item.name, button --[[@as LibDBIcon.button.DB]])
 end
 

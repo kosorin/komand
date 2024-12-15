@@ -706,6 +706,15 @@ do
                 set = setValue,
             },
             lineBreak(),
+            {
+                key = "icon",
+                name = "Icon",
+                width = 1.5,
+                type = "select",
+                get = getValue,
+                set = setValue,
+                values = K.Icon.optionsSelectValues,
+            },
         }
 
         for _, tab in ipairs(buttonActionTabs) do

@@ -43,6 +43,7 @@ Libs\AceTab-3.0\AceTab-3.0.xml
 Libs\AceSerializer-3.0\AceSerializer-3.0.xml
 
 Source\Utils.lua
+Source\Icon.lua
 Source\Addon.lua
 Source\Database.lua
 Source\DataBroker.lua

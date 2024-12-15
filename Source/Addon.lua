@@ -14,6 +14,7 @@ local KOMAND, K = ...
 ---@field slash string[]
 ---@field addon AceAddon
 ---@field Utils Komand.Module.Utils
+---@field Icon Komand.Module.Icon
 ---@field Database Komand.Module.Database
 ---@field DataBroker Komand.Module.DataBroker
 ---@field Command Komand.Module.Command
