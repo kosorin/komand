@@ -16,17 +16,17 @@ local KOMAND, K = ...
 ---@field rootNodes Komand.Command.Node[]
 ---@field nodes table<ID, Komand.Command.Node>
 
----@alias Komand.Command.Type "button"|"separator"
+---@alias Komand.Command.Type "macro"|"lua"|"separator"
 
 ---@class Komand.Command
 ---@field id ID
 ---@field parentId ID?
 ---@field type Komand.Command.Type
----@field enabled boolean
+---@field hide boolean
 ---@field name string
 ---@field color color
 ---@field order integer
----@field value string
+---@field script string
 
 ---@alias Komand.Module.Command.EventName "OnTreeChanged"
 
@@ -55,6 +55,7 @@ local function buildTree(commands)
 
     -- Create nodes
     for _, command in pairs(commands) do
+        ---@type Komand.Command.Node
         local node = {
             command = command,
             path = {},
@@ -129,9 +130,17 @@ end
 
 ---@param command Komand.Command
 function K.Command:Execute(command)
-    local editBox = DEFAULT_CHAT_FRAME.editBox
-    editBox:SetText(command.value)
-    ChatEdit_SendText(editBox)
+    if not command then
+        return
+    end
+
+    if command.type == "macro" then
+        local editBox = DEFAULT_CHAT_FRAME.editBox
+        editBox:SetText(command.script)
+        ChatEdit_SendText(editBox)
+    elseif command.type == "lua" then
+        print(K.addon.name, "Lua scripts not implemented yet.")
+    end
 end
 
 ---@param id ID
@@ -170,7 +179,7 @@ do
     ---@param commands table<ID, Komand.Command>
     ---@param parentId ID
     ---@return Komand.Command
-    local function add(commands, parentId)
+    local function addDB(commands, parentId)
         local id = K.Database:GenerateId("cmd", commands)
         local command = commands[id]
         command.id = id
@@ -182,7 +191,7 @@ do
     ---@param parentId ID
     ---@return Komand.Command
     function K.Command:Add(parentId)
-        local command = add(K.Database.db.profile.commands, parentId)
+        local command = addDB(K.Database.db.profile.commands, parentId)
         self:RebuildTree(true)
         return command
     end
@@ -192,11 +201,11 @@ do
     ---@param commands table<ID, Komand.Command>
     ---@param id ID
     ---@return Komand.Command
-    local function remove(commands, id)
+    local function removeDB(commands, id)
         local command = commands[id]
         for _, childCommand in pairs(commands) do
             if childCommand.parentId == id then
-                remove(commands, childCommand.id)
+                removeDB(commands, childCommand.id)
             end
         end
         commands[id] = nil
@@ -206,7 +215,7 @@ do
     ---@param id ID
     ---@return Komand.Command
     function K.Command:Remove(id)
-        local command = remove(K.Database.db.profile.commands, id)
+        local command = removeDB(K.Database.db.profile.commands, id)
         self:RebuildTree(true)
         return command
     end

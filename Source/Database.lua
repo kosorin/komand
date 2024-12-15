@@ -8,11 +8,9 @@ local CallbackHandler = LibStub("CallbackHandler-1.0")
 ---@type string, Komand
 local KOMAND, K = ...
 
----@class Komand.DB.Minimap : LibDBIcon.button.DB
-
 ---@class Komand.DB.Profile
 ---@field commands table<ID, Komand.Command>
----@field minimap Komand.DB.Minimap
+---@field buttons table<ID, Komand.Button>
 
 ---@class Komand.DB.Schema : AceDB.Schema
 ---@field profile Komand.DB.Profile
@@ -39,18 +37,28 @@ K.Database.defaults = {
             ["**"] = {
                 id = nil, ---@diagnostic disable-line: assign-type-mismatch
                 parentId = nil,
-                enabled = true,
-                type = "button",
+                hide = false,
+                type = "macro",
                 name = "",
                 color = { 1, 1, 1 },
                 order = 0,
-                value = "",
-            },
+                script = "",
+            } --[[@as Komand.Command]],
         },
-        minimap = {
-            hide = false,
-            lock = false,
-            minimapPos = 0,
+        buttons = {
+            ["**"] = {
+                id = nil, ---@diagnostic disable-line: assign-type-mismatch
+                type = "minimap",
+                name = "",
+                hide = false,
+                lock = false,
+                actions = {
+                    ["**"] = {
+                        type = nil, ---@diagnostic disable-line: assign-type-mismatch
+                        commandId = nil, ---@diagnostic disable-line: assign-type-mismatch
+                    } --[[@as Komand.Button.Action]],
+                },
+            } --[[@as Komand.Button]],
         },
     },
 }
@@ -86,6 +94,7 @@ function K.Database:Initialize()
     self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
 end
 
+---@private
 function K.Database:OnProfileChanged()
     self.callbacks:Fire("OnProfileChanged")
     AceConfigRegistry:NotifyChange(K.addon.name)

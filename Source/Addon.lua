@@ -15,8 +15,8 @@ local KOMAND, K = ...
 ---@field addon AceAddon
 ---@field Utils Komand.Module.Utils
 ---@field Database Komand.Module.Database
----@field Broker Komand.Module.Broker
 ---@field Command Komand.Module.Command
+---@field Button Komand.Module.Button
 ---@field Options Komand.Module.Options
 ---@field Menu Komand.Module.Menu
 _G[KOMAND] = K
@@ -30,7 +30,7 @@ function K.addon:OnInitialize()
     -- keep order!
     K.Database:Initialize()
     K.Command:Initialize()
-    K.Broker:Initialize()
+    K.Button:Initialize()
     K.Options:Initialize()
     K.Menu:Initialize()
 end

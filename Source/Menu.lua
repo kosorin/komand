@@ -21,7 +21,7 @@ end
 local function addMenuItem(node, isHeader, level)
     local command = node.command
 
-    if command.type == "button" then
+    if command.type == "macro" or command.type == "lua" then
         local info = UIDropDownMenu_CreateInfo()
 
         info.func = executeCommand
@@ -34,7 +34,7 @@ local function addMenuItem(node, isHeader, level)
         info.colorCode = K.Utils.ColorCode(command.color)
         info.text = command.name
         info.tooltipTitle = command.name
-        info.tooltipText = command.value
+        info.tooltipText = command.script
 
         UIDropDownMenu_AddButton(info, level)
     elseif command.type == "separator" then
@@ -50,19 +50,18 @@ local function initializeMenu(frame, level)
     end
 
     local commandId = UIDROPDOWNMENU_MENU_VALUE
-    local tree = K.Command.tree
-    local parentNode = commandId and tree.nodes[commandId]
-    local nodes = parentNode and parentNode.children or tree.rootNodes
 
-    if parentNode and level == 1 then
-        if parentNode.command.enabled then
+    local currentNode = commandId and K.Command.tree.nodes[commandId]
+    if currentNode and level == 1 then
+        if currentNode.command.hide then
             return
         end
-        addMenuItem(parentNode, true, level)
+        addMenuItem(currentNode, true, level)
     end
 
+    local nodes = currentNode and currentNode.children or K.Command.tree.rootNodes
     for _, node in pairs(nodes) do
-        if node.command.enabled then
+        if not node.command.hide then
             addMenuItem(node, false, level)
         end
     end
@@ -81,25 +80,22 @@ function K.Menu:Initialize()
     K.Command.RegisterCallback(self, "OnTreeChanged", "OnTreeChanged")
 end
 
----@param query string?
-function K.Menu:Show(query)
-    local command = K.Command:Find(query)
-    local commandId = command and command.id or nil
-
+---@param command Komand.Command?
+function K.Menu:Show(command)
     if not self.frame then
         self.frame = createFrame()
     end
 
-    ToggleDropDownMenu(1, commandId, self.frame, "cursor", 0, 0)
+    ToggleDropDownMenu(1, command and command.id, self.frame, "cursor", 0, 0)
 end
 
 function K.Menu:Hide()
-    local currentFrame = UIDROPDOWNMENU_OPEN_MENU
-    if currentFrame == self.frame then
+    if self.frame == UIDROPDOWNMENU_OPEN_MENU then
         CloseDropDownMenus()
     end
 end
 
+---@private
 function K.Menu:OnTreeChanged()
     self:Hide()
 end

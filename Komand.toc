@@ -46,6 +46,6 @@ Source\Utils.lua
 Source\Addon.lua
 Source\Database.lua
 Source\Command.lua
-Source\Broker.lua
+Source\Button.lua
 Source\Options.lua
 Source\Menu.lua
