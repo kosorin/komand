@@ -50,6 +50,7 @@ K.Database.defaults = {
                 id = nil, ---@diagnostic disable-line: assign-type-mismatch
                 type = "minimap",
                 name = "",
+                icon = nil,
                 hide = false,
                 lock = false,
                 actions = {

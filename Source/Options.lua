@@ -397,6 +397,7 @@ do
         local buttonId = info[#info - 1]
         local property = info[#info]
         K.Button:Get(buttonId)[property] = value
+        K.Button:Refresh(buttonId)
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -415,6 +416,7 @@ do
         local actionKey = info[#info - 1]
         local property = info[#info]
         K.Button:Get(buttonId).actions[actionKey][property] = value
+        K.Button:Refresh(buttonId)
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -430,6 +432,7 @@ do
         local actionKey = info[#info - 1]
         local property = info[#info]
         K.Button:Get(buttonId).actions[actionKey][property] = value ~= notSetSelectKey and value or nil
+        K.Button:Refresh(buttonId)
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -445,6 +448,7 @@ do
         local actionKey = info[#info - 1]
         local property = info[#info]
         K.Button:Get(buttonId).actions[actionKey][property] = value ~= notSetSelectKey and value or nil
+        K.Button:Refresh(buttonId)
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -464,7 +468,7 @@ do
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
             traverseParents(rootNode, nil, function(node)
-                values[node.command.id] = ("   "):rep(#node.path)
+                values[node.command.id] = ("   "):rep(#node.path - 1)
                     .. K.Utils.ColorCode(node.command.color)
                     .. node.command.name
             end)
@@ -500,7 +504,6 @@ do
         local buttonId = info[#info - 1]
         local button = K.Button:Get(buttonId)
         K.Button:Remove(button.id)
-        -- selectButtonGroup(nil)
     end
 
     ---@private

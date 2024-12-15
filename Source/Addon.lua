@@ -15,10 +15,12 @@ local KOMAND, K = ...
 ---@field addon AceAddon
 ---@field Utils Komand.Module.Utils
 ---@field Database Komand.Module.Database
+---@field DataBroker Komand.Module.DataBroker
 ---@field Command Komand.Module.Command
 ---@field Button Komand.Module.Button
 ---@field Options Komand.Module.Options
 ---@field Menu Komand.Module.Menu
+---@field Minimap Komand.Module.Minimap
 _G[KOMAND] = K
 
 K.slash = { "komand", "kmd" }
@@ -29,8 +31,10 @@ K.addon = AceAddon:NewAddon(KOMAND)
 function K.addon:OnInitialize()
     -- keep order!
     K.Database:Initialize()
+    K.DataBroker:Initialize()
     K.Command:Initialize()
     K.Button:Initialize()
     K.Options:Initialize()
     K.Menu:Initialize()
+    K.Minimap:Initialize()
 end

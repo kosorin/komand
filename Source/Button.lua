@@ -2,15 +2,12 @@ local pairs, ipairs, unpack, tonumber, tostring = pairs, ipairs, unpack, tonumbe
 local table, string, math = table, string, math
 
 local CallbackHandler = LibStub("CallbackHandler-1.0")
-local LibDataBroker = LibStub("LibDataBroker-1.1")
-local LibDBIcon = LibStub("LibDBIcon-1.0")
 
 ---@type string, Komand
 local KOMAND, K = ...
 
 ---@class Komand.Button.Object
 ---@field button Komand.Button
----@field data LibDataBroker.QuickLauncher
 
 ---@alias Komand.Button.Collection table<ID, Komand.Button.Object>
 
@@ -26,6 +23,7 @@ local KOMAND, K = ...
 ---@field id ID
 ---@field type Komand.Button.Type
 ---@field name string
+---@field icon string?
 ---@field hide boolean
 ---@field lock boolean
 ---@field actions { [mouseButton]: Komand.Button.Action? }
@@ -43,23 +41,6 @@ local KOMAND, K = ...
 ---@field UnregisterAllCallbacks fun(target: table)
 K.Button = {}
 
----@param button Komand.Button
----@return LibDataBroker.QuickLauncher
-local function createData(button)
-    return LibDataBroker:NewDataObject(K.addon.name, {
-        type = "launcher",
-        icon = "Interface\\Icons\\inv_misc_map_01",
-        label = button.name,
-        OnTooltipShow = function(tooltip)
-            tooltip:SetText(K.addon.name)
-            tooltip:AppendText(button.name)
-        end,
-        OnClick = function(_, mouseButton)
-            K.Button:Execute(button, mouseButton)
-        end,
-    }) --[[@as LibDataBroker.QuickLauncher]]
-end
-
 ---@param collection Komand.Button.Collection
 ---@param button Komand.Button
 ---@return Komand.Button.Object
@@ -67,10 +48,20 @@ local function addObject(collection, button)
     ---@type Komand.Button.Object
     local object = {
         button = button,
-        data = createData(button),
     }
 
     collection[button.id] = object
+
+    return object
+end
+
+---@param collection Komand.Button.Collection
+---@param button Komand.Button
+---@return Komand.Button.Object
+local function removeObject(collection, button)
+    local object = collection[button.id]
+
+    collection[button.id] = nil
 
     return object
 end
@@ -127,8 +118,8 @@ do
     ---@return Komand.Button
     function K.Button:Add()
         local button = addDB(K.Database.db.profile.buttons)
-        addObject(self.collection, button)
-        self.callbacks:Fire("OnCollectionChanged")
+        local object = addObject(self.collection, button)
+        self.callbacks:Fire("OnCollectionChanged", "add", object)
         return button
     end
 end
@@ -147,7 +138,14 @@ do
     ---@return Komand.Button
     function K.Button:Remove(id)
         local button = removeDB(K.Database.db.profile.buttons, id)
-        self.callbacks:Fire("OnCollectionChanged")
+        local object = removeObject(self.collection, button)
+        self.callbacks:Fire("OnCollectionChanged", "remove", object)
         return button
     end
+end
+
+---@param id ID
+function K.Button:Refresh(id)
+    local object = self.collection[id]
+    self.callbacks:Fire("OnCollectionChanged", "property", object)
 end

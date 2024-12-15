@@ -45,7 +45,9 @@ Libs\AceSerializer-3.0\AceSerializer-3.0.xml
 Source\Utils.lua
 Source\Addon.lua
 Source\Database.lua
+Source\DataBroker.lua
 Source\Command.lua
 Source\Button.lua
 Source\Options.lua
 Source\Menu.lua
+Source\Minimap.lua

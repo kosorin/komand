@@ -9,6 +9,11 @@ local KOMAND, K = ...
 K.Menu = {}
 
 ---@param info unknown
+local function cancelMenu(info)
+    K.Menu:Hide()
+end
+
+---@param info unknown
 ---@param command Komand.Command
 local function executeCommand(info, command)
     K.Menu:Hide()
@@ -30,7 +35,7 @@ local function addMenuItem(node, isHeader, level)
 
         info.notCheckable = true
         info.isTitle = false
-        info.hasArrow = not isHeader and getn(node.children) > 0
+        info.hasArrow = not isHeader and #node.children > 0
         info.colorCode = K.Utils.ColorCode(command.color)
         info.text = command.name
         info.tooltipTitle = command.name
@@ -42,6 +47,27 @@ local function addMenuItem(node, isHeader, level)
     end
 end
 
+---@param level integer
+local function addMenuSpace(level)
+    UIDropDownMenu_AddSpace(level)
+end
+
+---@param level integer
+local function addMenuSeparator(level)
+    UIDropDownMenu_AddSeparator(level)
+end
+
+---@param level integer
+local function addMenuCancel(level)
+    local info = UIDropDownMenu_CreateInfo()
+
+    info.func = cancelMenu
+    info.text = "Cancel"
+    info.notCheckable = true
+
+    UIDropDownMenu_AddButton(info, level)
+end
+
 ---@param frame unknown
 ---@param level integer
 local function initializeMenu(frame, level)
@@ -49,21 +75,29 @@ local function initializeMenu(frame, level)
         return
     end
 
-    local commandId = UIDROPDOWNMENU_MENU_VALUE
+    local parentCommandId = UIDROPDOWNMENU_MENU_VALUE
+    local parenttNode = parentCommandId and K.Command.tree.nodes[parentCommandId]
+    local nodes = parenttNode and parenttNode.children or K.Command.tree.rootNodes
 
-    local currentNode = commandId and K.Command.tree.nodes[commandId]
-    if currentNode and level == 1 then
-        if currentNode.command.hide then
+    if parenttNode and level == 1 then
+        if parenttNode.command.hide then
             return
         end
-        addMenuItem(currentNode, true, level)
+        addMenuItem(parenttNode, true, level)
+        addMenuSeparator(level)
     end
 
-    local nodes = currentNode and currentNode.children or K.Command.tree.rootNodes
     for _, node in pairs(nodes) do
         if not node.command.hide then
             addMenuItem(node, false, level)
         end
+    end
+
+    if level == 1 then
+        if #nodes > 0 then
+            addMenuSeparator(level)
+        end
+        addMenuCancel(level)
     end
 end
 
