@@ -1,3 +1,4 @@
+local loadstring, pcall = loadstring, pcall
 local pairs, ipairs, unpack, tonumber, tostring = pairs, ipairs, unpack, tonumber, tostring
 local table, string, math = table, string, math
 
@@ -135,9 +136,11 @@ function K.Command:Initialize()
 end
 
 ---@param command Komand.Command
+---@return boolean
+---@return string?
 function K.Command:Execute(command)
     if not command then
-        return
+        return false, "Missing command."
     end
 
     if command.type == "macro" then
@@ -145,8 +148,20 @@ function K.Command:Execute(command)
         editBox:SetText(command.script)
         ChatEdit_SendText(editBox)
     elseif command.type == "lua" then
-        print(K.addon.name, "Lua scripts not implemented yet.")
+        local chunkName = ("%s: %s"):format(K.addon.name, command.name)
+        local func, error = loadstring(command.script, chunkName);
+        if not func then
+            return false, error
+        end
+        local success, error = pcall(func);
+        if not success then
+            return false, error
+        end
+    else
+        return false, ("Unknown command type: %s"):format(command.type)
     end
+
+    return true, nil
 end
 
 ---@param id ID
