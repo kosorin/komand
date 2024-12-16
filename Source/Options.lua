@@ -304,8 +304,8 @@ do
                 name = "Remove Command",
                 type = "execute",
                 confirm = true,
-                confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children.")
-                    :format(node:getText()),
+                confirmText = ("Remove '%s' command?\nThis will remove all children.")
+                    :format(K.Utils.Colorize({ 1, 0, 0 }, node:getText())),
                 handler = K.Options,
                 func = removeCommand,
             },
@@ -452,11 +452,10 @@ end
 do
     ---@alias Komand.Options.ButtonActionTab { key: mouseButton, title: string }
     ---@type Komand.Options.ButtonActionTab[]
-    local buttonActionTabs = {
-        { key = "LeftButton",   title = "Left Button", },
-        { key = "RightButton",  title = "Right Button", },
-        { key = "MiddleButton", title = "Middle Button", },
-    }
+    local buttonActionTabs = {}
+    for _, mouseButtonInfo in ipairs(K.Utils.mouseButtons) do
+        table.insert(buttonActionTabs, { key = mouseButtonInfo.mouseButton, title = mouseButtonInfo.label, })
+    end
 
     ---@param buttonId ID?
     local function selectButtonGroup(buttonId)
@@ -524,11 +523,15 @@ do
     ---@param info AceConfig.HandlerInfo
     ---@return table<Komand.Button.Action.Type, string>
     local function getActionTypeValues(info)
-        return {
-            [""] = K.Utils.ColorCode { .6, .6, .6 } .. "<Not Set>",
-            ["showMenu"] = "Show menu",
-            ["executeCommand"] = "Execute command",
+        local values = {
+            [notSetSelectKey] = K.Utils.ColorCode { .6, .6, .6 } .. "<Not Set>",
         }
+
+        for _, actionInfo in ipairs(K.Button.actions) do
+            values[actionInfo.type] = actionInfo.label
+        end
+
+        return values
     end
 
     ---@param info AceConfig.HandlerInfo
@@ -673,8 +676,8 @@ do
                 name = "Remove Button",
                 type = "execute",
                 confirm = true,
-                confirmText = ("Remove '|cffff0000%s|r' button?")
-                    :format(button.name),
+                confirmText = ("Remove '%s' button?")
+                    :format(K.Utils.Colorize({ 1, 0, 0 }, button.name)),
                 handler = K.Options,
                 func = removeButton,
             },

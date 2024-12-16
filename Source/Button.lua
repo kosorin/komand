@@ -17,6 +17,8 @@ local KOMAND, K = ...
 ---@field type Komand.Button.Action.Type
 ---@field commandId ID
 
+---@alias Komand.Button.Action.Info { type: Komand.Button.Action.Type, label: string, textFormat: string }
+
 ---@alias Komand.Button.Type "minimap"
 
 ---@class Komand.Button
@@ -34,12 +36,21 @@ local KOMAND, K = ...
 ---@field Fire fun(self: Komand.Module.Button.CallbackHandlerRegistry, eventName: Komand.Module.Button.EventName, ...)
 
 ---@class Komand.Module.Button : Komand.Module
+---@field actions { [integer]: Komand.Button.Action.Info, [Komand.Button.Action.Type]: Komand.Button.Action.Info }
 ---@field collection Komand.Button.Collection
 ---@field private callbacks Komand.Module.Button.CallbackHandlerRegistry
 ---@field RegisterCallback fun(target: table, eventName: Komand.Module.Button.EventName, method: string|function)
 ---@field UnregisterCallback fun(target: table, eventName: Komand.Module.Button.EventName)
 ---@field UnregisterAllCallbacks fun(target: table)
 K.Button = {}
+
+K.Button.actions = {
+    { type = "showMenu",       label = "Show Menu",       textFormat = "Show %s" },
+    { type = "executeCommand", label = "Execute Command", textFormat = "Execute %s" },
+}
+for _, info in ipairs(K.Button.actions) do
+    K.Button.actions[info.type] = info
+end
 
 ---@param collection Komand.Button.Collection
 ---@param button Komand.Button

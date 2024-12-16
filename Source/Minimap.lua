@@ -44,8 +44,18 @@ function K.Minimap:Add(object)
     item.object.icon = button.icon or defaultIcon
 
     function item.object.OnTooltipShow(tooltip)
-        tooltip:SetText(K.addon.name)
-        tooltip:AddLine(button.name)
+        tooltip:SetText(button.name)
+
+        for _, mouseButtonInfo in ipairs(K.Utils.mouseButtons) do
+            local action = button.actions[mouseButtonInfo.mouseButton]
+            local command = action and K.Command:Get(action.commandId)
+            local actionInfo = action and K.Button.actions[action.type]
+            local actionText = command and actionInfo and actionInfo.textFormat:format(command.name)
+            if actionText then
+                local mouseButtonLabel = K.Utils.Colorize({ 0, 1, 0 }, mouseButtonInfo.label)
+                tooltip:AddLine(("%s - %s"):format(mouseButtonLabel, actionText))
+            end
+        end
     end
 
     function item.object.OnClick(_, mouseButton)
