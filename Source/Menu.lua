@@ -36,8 +36,8 @@ local function addMenuItem(node, level)
         info.isTitle = false
         info.hasArrow = #node.children > 0
         info.colorCode = K.Utils.ColorCode(command.color)
-        info.text = command.name
-        info.tooltipTitle = command.name
+        info.text = node:getText()
+        info.tooltipTitle = node:getText()
         info.tooltipText = command.script
 
         UIDropDownMenu_AddButton(info, level)

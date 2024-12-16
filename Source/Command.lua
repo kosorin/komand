@@ -12,6 +12,21 @@ local KOMAND, K = ...
 ---@field parent Komand.Command.Node?
 ---@field children Komand.Command.Node[]
 ---@field path ID[]
+local nodePrototype = {}
+
+---@param useColor boolean?
+---@return string
+function nodePrototype:getText(useColor)
+    local text = self.command.type == "separator"
+        and "-------"
+        or self.command.name
+
+    if useColor then
+        text = K.Utils.ColorCode(self.command.color) .. text
+    end
+
+    return text
+end
 
 ---@class Komand.Command.Tree
 ---@field rootNodes Komand.Command.Node[]
@@ -57,12 +72,12 @@ local function buildTree(commands)
     -- Create nodes
     for _, command in pairs(commands) do
         ---@type Komand.Command.Node
-        local node = {
+        local node = setmetatable({
             command = command,
             path = {},
             parent = nil,
             children = {},
-        }
+        }, { __index = nodePrototype })
         tree.nodes[command.id] = node
         table.insert(sortedNodes, node)
     end

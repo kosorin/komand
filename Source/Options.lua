@@ -88,8 +88,6 @@ local function traverseParents(node, excludeCommandId, callback)
 end
 
 do
-    local separatorName = "-------"
-
     ---@param commandId ID?
     local function selectCommandGroup(commandId)
         local node = commandId and K.Command.tree.nodes[commandId]
@@ -213,9 +211,7 @@ do
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
             traverseParents(rootNode, commandId, function(node)
-                values[node.command.id] = ("   "):rep(#node.path)
-                    .. K.Utils.ColorCode(node.command.color)
-                    .. node.command.name
+                values[node.command.id] = ("   "):rep(#node.path) .. node:getText(true)
             end)
         end
 
@@ -274,17 +270,6 @@ do
 
     ---@private
     ---@param info AceConfig.HandlerInfo
-    ---@return string
-    local function commandName(info)
-        local commandId = info[#info]
-        local command = K.Command:Get(commandId)
-        return command.type == "separator"
-            and separatorName
-            or command.name
-    end
-
-    ---@private
-    ---@param info AceConfig.HandlerInfo
     ---@return true
     local function commandIsSeparator(info)
         local commandId = info[#info - 1]
@@ -320,7 +305,7 @@ do
                 type = "execute",
                 confirm = true,
                 confirmText = ("Remove '|cffff0000%s|r' command?\nThis will remove all children.")
-                    :format(command.name),
+                    :format(node:getText()),
                 handler = K.Options,
                 func = removeCommand,
             },
@@ -415,7 +400,7 @@ do
         ---@type AceConfig.OptionsTable
         local optionsTable = {
             key = node.command.id,
-            name = commandName,
+            name = node:getText(),
             type = "group",
             args = build(argsSource),
         }
@@ -569,9 +554,7 @@ do
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
             traverseParents(rootNode, nil, function(node)
-                values[node.command.id] = ("   "):rep(#node.path - 1)
-                    .. K.Utils.ColorCode(node.command.color)
-                    .. node.command.name
+                values[node.command.id] = ("   "):rep(#node.path - 1) .. node:getText(true)
             end)
         end
 
