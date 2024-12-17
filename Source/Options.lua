@@ -211,7 +211,7 @@ do
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
             traverseParents(rootNode, commandId, function(node)
-                values[node.command.id] = ("   "):rep(#node.path) .. node:getText(true)
+                values[node.command.id] = ("   "):rep(#node.path) .. node:GetText(true)
             end)
         end
 
@@ -305,7 +305,7 @@ do
                 type = "execute",
                 confirm = true,
                 confirmText = ("Remove '%s' command?\nThis will remove all children.")
-                    :format(K.Utils.Colorize({ 1, 0, 0 }, node:getText())),
+                    :format(K.Utils.Colorize({ 1, 0, 0 }, node:GetText())),
                 handler = K.Options,
                 func = removeCommand,
             },
@@ -400,7 +400,7 @@ do
         ---@type AceConfig.OptionsTable
         local optionsTable = {
             key = node.command.id,
-            name = node:getText(),
+            name = node:GetText(),
             type = "group",
             args = build(argsSource),
         }
@@ -557,7 +557,7 @@ do
 
         for _, rootNode in pairs(K.Command.tree.rootNodes) do
             traverseParents(rootNode, nil, function(node)
-                values[node.command.id] = ("   "):rep(#node.path - 1) .. node:getText(true)
+                values[node.command.id] = ("   "):rep(#node.path - 1) .. node:GetText(true)
             end)
         end
 

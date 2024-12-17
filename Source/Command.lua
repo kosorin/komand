@@ -16,7 +16,7 @@ local nodePrototype = {}
 
 ---@param useColor boolean?
 ---@return string
-function nodePrototype:getText(useColor)
+function nodePrototype:GetText(useColor)
     local text = self.command.type == "separator"
         and "-------"
         or self.command.name
