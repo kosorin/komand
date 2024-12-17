@@ -107,6 +107,8 @@ end
 
 ---@param command Komand.Command?
 function K.Menu:Show(command)
+    self:Hide()
+
     if not self.frame then
         self.frame = createFrame()
     end
@@ -115,7 +117,7 @@ function K.Menu:Show(command)
 end
 
 function K.Menu:Hide()
-    if self.frame == UIDROPDOWNMENU_OPEN_MENU then
+    if self.frame and self.frame == UIDROPDOWNMENU_OPEN_MENU then
         CloseDropDownMenus()
     end
 end
