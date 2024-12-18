@@ -42,7 +42,9 @@ local KOMAND, K = ...
 ---@field RegisterCallback fun(target: table, eventName: Komand.Module.Button.EventName, method: string|function)
 ---@field UnregisterCallback fun(target: table, eventName: Komand.Module.Button.EventName)
 ---@field UnregisterAllCallbacks fun(target: table)
-K.Button = {}
+K.Button = {
+    idPrefix = "btn-",
+}
 
 K.Button.actions = {
     { type = "showMenu",       label = "Show Menu",       textFormat = "Show %s" },
@@ -87,6 +89,30 @@ function K.Button:Initialize()
     end
 end
 
+---@return Komand.Button.Object[]
+function K.Button:GetSortedCollection()
+    ---@type Komand.Button.Object[]
+    local result = {}
+
+    for _, object in pairs(self.collection) do
+        table.insert(result, object)
+    end
+
+    table.sort(result, function(a, b)
+        local aa, bb
+
+        aa = a.button.name:upper()
+        bb = b.button.name:upper()
+        if aa ~= bb then
+            return aa < bb
+        end
+
+        return aa < bb
+    end)
+
+    return result
+end
+
 ---@param button Komand.Button
 ---@param mouseButton mouseButton
 function K.Button:Execute(button, mouseButton)
@@ -119,7 +145,7 @@ do
     ---@param buttons table<ID, Komand.Button>
     ---@return Komand.Button
     local function addDB(buttons)
-        local id = K.Database:GenerateId("btn", buttons)
+        local id = K.Database:GenerateId(K.Button.idPrefix, buttons)
         local button = buttons[id]
         button.id = id
         button.name = "*New Button"

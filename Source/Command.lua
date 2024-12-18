@@ -12,11 +12,11 @@ local KOMAND, K = ...
 ---@field parent Komand.Command.Node?
 ---@field children Komand.Command.Node[]
 ---@field path ID[]
-local nodePrototype = {}
+local Node = {}
 
 ---@param useColor boolean?
 ---@return string
-function nodePrototype:GetText(useColor)
+function Node:GetText(useColor)
     local text = self.command.type == "separator"
         and "-------"
         or self.command.name
@@ -26,6 +26,20 @@ function nodePrototype:GetText(useColor)
     end
 
     return text
+end
+
+---@param callback fun(node: Komand.Command.Node)
+---@param excludeCommandId ID?
+function Node:Traverse(callback, excludeCommandId)
+    if excludeCommandId and excludeCommandId == self.command.id then
+        return
+    end
+
+    callback(self)
+
+    for _, childNode in pairs(self.children) do
+        childNode:Traverse(callback, excludeCommandId)
+    end
 end
 
 ---@class Komand.Command.Tree
@@ -55,7 +69,9 @@ end
 ---@field RegisterCallback fun(target: table, eventName: Komand.Module.Command.EventName, method: string|function)
 ---@field UnregisterCallback fun(target: table, eventName: Komand.Module.Command.EventName)
 ---@field UnregisterAllCallbacks fun(target: table)
-K.Command = {}
+K.Command = {
+    idPrefix = "cmd-",
+}
 
 ---@param commands table<ID, Komand.Command>
 ---@return Komand.Command.Tree
@@ -77,7 +93,7 @@ local function buildTree(commands)
             path = {},
             parent = nil,
             children = {},
-        }, { __index = nodePrototype })
+        }, { __index = Node })
         tree.nodes[command.id] = node
         table.insert(sortedNodes, node)
     end
@@ -216,7 +232,7 @@ do
     ---@param parentId ID
     ---@return Komand.Command
     local function addDB(commands, parentId)
-        local id = K.Database:GenerateId("cmd", commands)
+        local id = K.Database:GenerateId(K.Command.idPrefix, commands)
         local command = commands[id]
         command.id = id
         command.parentId = parentId

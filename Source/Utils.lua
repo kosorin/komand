@@ -54,3 +54,10 @@ function K.Utils.Colorize(color, text, reset)
 
     return result
 end
+
+---@param text string
+---@param start string
+---@return boolean
+function K.Utils.StartsWith(text, start)
+    return #text >= #start and text:sub(1, #start) == start
+end

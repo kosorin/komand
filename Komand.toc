@@ -50,5 +50,8 @@ Source\DataBroker.lua
 Source\Command.lua
 Source\Button.lua
 Source\Options.lua
+Source\Options\Commands.lua
+Source\Options\Buttons.lua
+Source\Options\Profiles.lua
 Source\Menu.lua
 Source\Minimap.lua

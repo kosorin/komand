@@ -79,7 +79,7 @@ do
             for i = 1, idLength do
                 bytes[i] = string.byte(idAlphabet, math.random(idAlphabetLength))
             end
-            id = ("%s-%s"):format(prefix, string.char(unpack(bytes)))
+            id = prefix .. string.char(unpack(bytes))
         until items == nil or items[id] == nil or items[id].id == nil
         return id
     end
