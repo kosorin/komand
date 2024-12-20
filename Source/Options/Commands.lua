@@ -195,10 +195,11 @@ end
 
 ---@private
 ---@param node Komand.Command.Node
----@return AceConfig.OptionsTable
+---@return AceConfig.OptionsTable.Ex
 function Tab:BuildCommandOptionsTable(node)
     local command = node.command
 
+    ---@type AceConfig.OptionsTable.Ex[]
     local controlOptionsTables = {
         {
             name = "HIDDEN", ---@todo delete?
@@ -218,7 +219,7 @@ function Tab:BuildCommandOptionsTable(node)
             name = "Remove Command",
             type = "execute",
             confirm = true,
-            confirmText = ("Remove '%s' command?\nThis will remove all children.")
+            confirmText = ("Remove '%s' command?\nThis will remove ALL children!")
                 :format(K.Utils.Colorize({ 1, 0, 0 }, node:GetText())),
             func = onRemoveCommand,
         },
@@ -298,8 +299,9 @@ function Tab:BuildCommandOptionsTable(node)
         table.insert(controlOptionsTables, self:BuildCommandOptionsTable(childNode))
     end
 
-    ---@type AceConfig.OptionsTable
+    ---@type AceConfig.OptionsTable.Ex
     local commandOptionsTable = {
+        _key = command.id,
         name = node:GetText(),
         type = "group",
         get = onGetValue,
@@ -341,6 +343,9 @@ function Tab:UpdateOptionsTable(containerOptionsTable)
     for order, rootNode in ipairs(K.Command.tree.rootNodes) do
         local commandOptionsTable = self:BuildCommandOptionsTable(rootNode)
         commandOptionsTable.order = order
+
+        K.Options.ClearKey(commandOptionsTable)
+
         optionsTables[rootNode.command.id] = commandOptionsTable
     end
 end

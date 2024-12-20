@@ -46,7 +46,7 @@ do
         local result = {}
 
         for order, optionsTable in ipairs(optionsTables) do
-            local key = optionsTable._key
+            local key = K.Options.ClearKey(optionsTable)
 
             if not key then
                 key = "_key" .. tostring(keyAutoIncrement)
@@ -55,13 +55,20 @@ do
 
             assert(not result[key])
 
-            optionsTable._key = nil
             optionsTable.order = order
 
             result[key] = optionsTable
         end
 
         return result
+    end
+
+    ---@param optionsTable AceConfig.OptionsTable.Ex
+    ---@return string?
+    function K.Options.ClearKey(optionsTable)
+        local key = optionsTable._key
+        optionsTable._key = nil
+        return key
     end
 end
 

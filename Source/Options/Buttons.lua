@@ -211,7 +211,7 @@ end
 
 ---@private
 ---@param object Komand.Button.Object
----@return AceConfig.OptionsTable
+---@return AceConfig.OptionsTable.Ex
 function Tab:BuildButtonOptionsTable(object)
     local button = object.button
 
@@ -266,8 +266,9 @@ function Tab:BuildButtonOptionsTable(object)
         table.insert(controlOptionsTables, self:BuildButtonActionOptionsTable(object, actionOptionsTable))
     end
 
-    ---@type AceConfig.OptionsTable
+    ---@type AceConfig.OptionsTable.Ex
     local buttonOptionsTable = {
+        _key = button.id,
         name = button.name,
         type = "group",
         childGroups = "tab",
@@ -310,6 +311,9 @@ function Tab:UpdateOptionsTable(containerOptionsTable)
     for order, object in ipairs(K.Button:GetSortedCollection()) do
         local buttonOptionsTable = self:BuildButtonOptionsTable(object)
         buttonOptionsTable.order = order
+
+        K.Options.ClearKey(buttonOptionsTable)
+
         optionsTables[object.button.id] = buttonOptionsTable
     end
 end
