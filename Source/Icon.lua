@@ -22,6 +22,9 @@ do
         "INV_Sword_04",
         "INV_Shield_05",
         "inv_scroll_05",
+        "inv_misc_map_01",
+        "inv_misc_gear_01",
+        "Inv_scroll_03",
     } do
         local path = directory .. name
         K.Icon.optionsSelectValues[path] = ("|T%s:%i|t %s"):format(path, size, name)
